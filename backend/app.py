@@ -13,7 +13,8 @@ import shutil
 import tempfile
 from convert_to_json import convert_to_json
 import gc, time
-from langchain.vectorstores import Chroma
+from langchain_chroma import Chroma
+from convert_to_json import ocr_lang_map
 
 app = FastAPI(title="RAG Chatbot API")
 DB_DIR = "vector_db"
@@ -87,7 +88,9 @@ async def build_db(
             try:
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
-
+                # Pass through OCR language as received from frontend (Tesseract code like "tel", "hin", "eng")
+                # The converter will normalize it internally.
+                print(f"[DEBUG] OCR lang from frontend (passthrough): {ocr_lang}")
                 json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
                 for page in json_data["pages"]:
                     text = page.get("content_en") or page.get("content_original", "")
@@ -124,7 +127,7 @@ async def build_db(
                 persist_directory=DB_DIR
             )
 
-        vectorstore.persist()
+        # No explicit persist(); modern Chroma persists automatically when using a persistent directory
 
         return {
             "status": "database built",
@@ -133,6 +136,9 @@ async def build_db(
         }
 
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[ERROR] build_db failed: {e}\n{tb}")
         for p in temp_files:
             if os.path.exists(p):
                 os.unlink(p)

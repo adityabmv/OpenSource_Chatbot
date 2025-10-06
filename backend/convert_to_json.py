@@ -102,42 +102,78 @@ def convert_to_json(file_path: str, ocr_lang: str = "eng"):
     Process a PDF with OCR + translation + summarization.
     Returns a dict with {"pages": [...]}
     """
-    doc = fitz.open(file_path)
-    pdf_data = []
+    import traceback
 
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)
-        pix = page.get_pixmap(dpi=300)
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    try:
+        # Normalize: convert Tesseract code (e.g. "tel") to internal code (e.g. "te")
+        lang_code = next((k for k, v in ocr_lang_map.items() if v == ocr_lang), "en")
+        print(f"[DEBUG] Received ocr_lang: {ocr_lang}")
+        print(f"[DEBUG] Normalized lang_code: {lang_code}")
 
-        # OCR
-        text = pytesseract.image_to_string(img, lang=ocr_lang_map.get(ocr_lang, "eng"))
-        text = clean_text(text)
+        doc = fitz.open(file_path)
+        pdf_data = []
 
-        # Auto-detect language if not provided
-        lang = ocr_lang
-        if not ocr_lang or ocr_lang == "eng":
-            try:
-                if len(text.strip()) >= 20:
-                    lang = detect(text)
-            except:
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            pix = page.get_pixmap(dpi=300)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+
+            # OCR using Tesseract-compatible code
+            ocr_code = ocr_lang_map.get(lang_code, "eng")
+            text = pytesseract.image_to_string(img, lang=ocr_code)
+            text = clean_text(text)
+            print(f"[DEBUG] Page {page_num + 1} OCR text (first 300 chars): {text[:300]}")
+
+            # Auto-detect language if not provided or defaulted
+            lang = lang_code
+            if not ocr_lang or ocr_lang == "eng":
+                try:
+                    if len(text.strip()) >= 20:
+                        detected = detect(text)
+                        print(f"[DEBUG] Detected language: {detected}")
+                        if detected in lang_map:
+                            lang = detected
+                except Exception as e:
+                    print(f"[WARN] Language detection failed: {e}")
+                    lang = "en"
+
+            if lang not in lang_map:
+                print(f"[WARN] Language '{lang}' not supported, defaulting to 'en'")
                 lang = "en"
-        if lang not in lang_map:
-            lang = "en"
 
-        # Translate + summarize
-        chunks = chunk_text(text, nllb_tokenizer, max_tokens=500)
-        content_en = translate_chunks(chunks, src_lang=lang)
-        content_en = remove_redundant_sentences(content_en)
-        summary_en = summarize_english(content_en)
+            # Translate + summarize with robust fallbacks so API doesn't 500 on model issues
+            try:
+                chunks = chunk_text(text, nllb_tokenizer, max_tokens=500)
+                try:
+                    content_en = translate_chunks(chunks, src_lang=lang)
+                except Exception as e:
+                    print(f"[WARN] Translation failed on page {page_num + 1}: {e}")
+                    # Fallback: use OCR text directly
+                    content_en = text if lang == "en" else text
 
-        page_dict = {
-            "page_number": page_num + 1,
-            "original_language": lang,
-            "content_original": text,
-            "content_en": content_en,
-            "summary_en": summary_en
-        }
-        pdf_data.append(page_dict)
+                content_en = remove_redundant_sentences(content_en)
 
-    return {"pages": pdf_data}
+                try:
+                    summary_en = summarize_english(content_en)
+                except Exception as e:
+                    print(f"[WARN] Summarization failed on page {page_num + 1}: {e}")
+                    summary_en = ""
+            except Exception as e:
+                print(f"[WARN] Processing (translate/summarize) failed on page {page_num + 1}: {e}")
+                content_en = text
+                summary_en = ""
+
+            page_dict = {
+                "page_number": page_num + 1,
+                "original_language": lang,
+                "content_original": text,
+                "content_en": content_en,
+                "summary_en": summary_en
+            }
+            pdf_data.append(page_dict)
+
+        return {"pages": pdf_data}
+
+    except Exception as e:
+        traceback.print_exc()
+        raise RuntimeError(f"convert_to_json failed: {str(e)}")

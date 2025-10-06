@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import GlassCard from "./components/GlassCard.tsx";
 import { useDropzone } from "react-dropzone";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const API_BASE = "http://localhost:8000"; // Change if backend runs elsewhere
 
@@ -15,7 +17,7 @@ function App() {
   const [embeddingModel, setEmbeddingModel] = useState("sentence-transformers/all-MiniLM-L6-v2");
   const [jsonPreview, setJsonPreview] = useState<any>(null);
   const [llmModel, setLlmModel] = useState("qwen3:1.7b"); // Default LLM model
-  const [llmInstruction, setLlmInstruction] = useState("Answer concisely"); // Default instruction template;
+  const [llmInstruction, setLlmInstruction] = useState("Answer in concise Markdown. Use bullet points when listing; cite brief sources when relevant."); // Default instruction template;
   const [prompt, setPrompt] = useState("");
   const [chat, setChat] = useState<{ user: string; bot: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -268,7 +270,27 @@ function App() {
               <div className="mb-1 text-zinc-300 font-semibold">You:</div>
               <div className="mb-2 bg-white/5 rounded-lg px-3 py-2">{msg.user}</div>
               <div className="mb-1 text-zinc-400 font-semibold">Bot:</div>
-              <div className="bg-white/10 rounded-lg px-3 py-2 animate-fade-in">{msg.bot}</div>
+              <div className="bg-white/10 rounded-lg px-3 py-2 animate-fade-in overflow-x-auto">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code: ({ className, children, ...props}) => (
+                      <code className={`bg-black/30 px-1.5 py-0.5 rounded ${className || ""}`} {...props}>
+                        {children}
+                      </code>
+                    ),
+                    pre: ({children}) => (
+                      <pre className="bg-black/30 p-3 rounded overflow-x-auto">{children}</pre>
+                    ),
+                    ul: ({children}) => <ul className="list-disc pl-6 space-y-1">{children}</ul>,
+                    ol: ({children}) => <ol className="list-decimal pl-6 space-y-1">{children}</ol>,
+                    a: ({children, ...props}) => <a className="text-blue-400 underline" {...props}>{children}</a>,
+                    p: ({children}) => <p className="mb-2">{children}</p>,
+                  }}
+                >
+                  {msg.bot}
+                </ReactMarkdown>
+              </div>
             </div>
           ))}
         </div>
