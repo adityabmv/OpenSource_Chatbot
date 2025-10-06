@@ -1,6 +1,6 @@
 # app.py
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from typing import List, Optional
+from typing import List
 from chunker import chunk_text
 from embeddings import get_embeddings_model
 from vectorstore import build_vectorstore, query_vectorstore
@@ -13,6 +13,7 @@ import shutil
 import tempfile
 from convert_to_json import convert_to_json
 import gc, time
+from langchain.vectorstores import Chroma
 
 app = FastAPI(title="RAG Chatbot API")
 DB_DIR = "vector_db"
@@ -20,18 +21,7 @@ DB_DIR = "vector_db"
 # Global variable to store vectorstore
 vectorstore = None
 
-def _safe_rmtree(path, retries=5, delay=0.25):
-    last = None
-    for _ in range(retries):
-        try:
-            shutil.rmtree(path)
-            return
-        except PermissionError as e:
-            last = e
-            time.sleep(delay)
-    if last:
-        raise last
-
+# CORS setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -45,6 +35,30 @@ class QueryRequest(BaseModel):
     top_k: int = 5
     llm_model: str
 
+# =========================
+# Helper: Load vectorstore if needed
+# =========================
+def load_vectorstore_if_needed(embedding_model_name="sentence-transformers/all-MiniLM-L6-v2"):
+    global vectorstore
+    if vectorstore is None and os.path.exists(DB_DIR):
+        embeddings_model = get_embeddings_model(model_name=embedding_model_name)
+        vectorstore = Chroma(
+            collection_name="rag_db",
+            embedding_function=embeddings_model,
+            persist_directory=DB_DIR
+        )
+
+# =========================
+# Endpoint 1: Download DB
+# =========================
+@app.get("/download_db/")
+async def download_db():
+    shutil.make_archive("vector_db_backup", "zip", "vector_db")
+    return FileResponse("vector_db_backup.zip", filename="vector_db_backup.zip")
+
+# =========================
+# Endpoint 2: Build DB
+# =========================
 @app.post("/build_db/")
 async def build_db(
     files: List[UploadFile] = File(...),
@@ -54,43 +68,26 @@ async def build_db(
     ocr_lang: str = Form("eng"),
 ):
     global vectorstore
-    
-    # release any open handles then delete the folder safely (Windows)
-    if vectorstore is not None:
-        try:
-            vectorstore.persist()
-        except Exception:
-            pass
-        vectorstore = None
-        gc.collect()
-
-    if os.path.exists(DB_DIR):
-        _safe_rmtree(DB_DIR)
-    os.makedirs(DB_DIR, exist_ok=True)
-
-    temp_files = []  # make sure this exists even if an error happens
+    temp_files = []
 
     try:
         all_texts = []
         preview_lines = []
-        
+
         for f in files:
             if not f.filename:
                 continue
-                
             content = await f.read()
             if not content:
                 continue
-                
-            # Create temp file with proper cleanup
+
             temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
             temp_files.append(temp_path)
-            
+
             try:
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
 
-                # Convert to JSON
                 json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
                 for page in json_data["pages"]:
                     text = page.get("content_en") or page.get("content_original", "")
@@ -102,7 +99,6 @@ async def build_db(
                             preview_lines.append(cleaned[:500] + ("..." if len(cleaned) > 500 else ""))
                             preview_lines.append("")
             finally:
-                # Clean up temp file
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
 
@@ -112,54 +108,77 @@ async def build_db(
         combined_text = " ".join(all_texts)
         chunks = chunk_text(combined_text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         embeddings_model = get_embeddings_model(model_name=embedding_model)
-        vectorstore = build_vectorstore(chunks, embeddings_model, collection_name="rag_db", persist_directory=DB_DIR)
-        
-        return {"status": "database built", "num_chunks": len(chunks), "preview": preview_lines}
-        
+
+        if os.path.exists(DB_DIR):
+            vectorstore = Chroma(
+                collection_name="rag_db",
+                embedding_function=embeddings_model,
+                persist_directory=DB_DIR
+            )
+        else:
+            os.makedirs(DB_DIR, exist_ok=True)
+            vectorstore = build_vectorstore(
+                chunks,
+                embeddings_model,
+                collection_name="rag_db",
+                persist_directory=DB_DIR
+            )
+
+        vectorstore.persist()
+
+        return {
+            "status": "database built",
+            "num_chunks": len(chunks),
+            "preview": preview_lines
+        }
+
     except Exception as e:
-        # Clean up any remaining temp files
         for p in temp_files:
             if os.path.exists(p):
                 os.unlink(p)
         raise HTTPException(status_code=500, detail=f"Error building database: {str(e)}")
 
-@app.get("/download_db/")
-async def download_db():
-    shutil.make_archive("vector_db_backup", "zip", "vector_db")
-    return FileResponse("vector_db_backup.zip", filename="vector_db_backup.zip")
-
-
 # =========================
-# Endpoint 2: Query RAG
+# Endpoint 3: Query RAG
 # =========================
-
 @app.post("/query/")
 async def query_rag(request: QueryRequest):
     global vectorstore
+    load_vectorstore_if_needed()
+
     if not vectorstore:
         raise HTTPException(status_code=400, detail="Vector store not built yet. Please build database first.")
 
     try:
-        # Retrieve top_k chunks
         retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
         context = " ".join(retrieved_chunks)
-
-        # Create prompt for LLM
         llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
-        response = ollama.chat(
-            model=request.llm_model,  # Use model from request
-            messages=[{"role": "user", "content": llm_prompt}]
-        )
+
+        if "qwen" in request.llm_model.lower():
+            response = ollama.chat(
+                model=request.llm_model,
+                messages=[
+                    {"role": "system", "content": "Answer directly. Do not output reasoning steps."},
+                    {"role": "user", "content": llm_prompt}
+                ],
+                
+            )
+        else:
+            response = ollama.chat(
+                model=request.llm_model,
+                messages=[{"role": "user", "content": llm_prompt}]
+            )
 
         return {
             "answer": response,
             "retrieved_chunks": retrieved_chunks
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error querying: {str(e)}")
 
 # =========================
-# Endpoint 3: Status
+# Endpoint 4: Status
 # =========================
 @app.get("/status/")
 async def status():
@@ -168,6 +187,10 @@ async def status():
         return {"vector_store_ready": True, "num_chunks": len(vectorstore._collection.get()["documents"])}
     else:
         return {"vector_store_ready": False, "num_chunks": 0}
+
+# =========================
+# Endpoint 5: Recommend Chunk Settings
+# =========================
 @app.post("/recommend_chunk_settings/")
 async def recommend_chunk_settings(files: List[UploadFile] = File(...)):
     def get_recommendation(file_size_kb):
@@ -191,7 +214,6 @@ async def recommend_chunk_settings(files: List[UploadFile] = File(...)):
         "recommended_chunk_overlap": recommendation["chunk_overlap"],
         "total_file_size_kb": round(total_size_kb, 2)
     }
-
 
 # =========================
 # Run with:
