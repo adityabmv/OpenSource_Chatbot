@@ -25,6 +25,8 @@
 - **Multiple LLM Support**: Choose from various models (Qwen, TinyLlama, Mistral, Phi)
 - **Custom Instructions**: Tailor bot behavior for specific use cases
 - **Markdown Rendering**: Rich text responses with syntax highlighting
+- **Persistent Chat History**: Complete conversation memory with save/load functionality
+- **Conversation Management**: Create, load, and switch between multiple conversation threads
 
 ### 🎨 **Modern UI/UX**
 - **Intuitive Dashboard**: Visual bot management with status indicators
@@ -118,6 +120,9 @@ npm run dev
 4. **Start Chatting**
    - Once the database is built, start asking questions!
    - Each bot maintains separate context and knowledge
+   - **Chat History**: Click "History" to see all previous conversations
+   - **Load Conversations**: Click any conversation to restore it and continue chatting
+   - **New Conversations**: Click "New Conversation" to start fresh
 
 ### Managing Multiple Bots
 
@@ -146,16 +151,14 @@ npm run dev
 │  Data Storage                                           │
 │  ├── Bot Configs (JSON)                                │
 │  ├── Vector Databases (ChromaDB)                       │
-│  └── Individual bot directories                       │
 └─────────────────────────────────────────────────────────┘
-```
 
 ### Key Components
 
-#### **BotManager** (`bot_manager.py`)
-- Manages bot creation, updates, and deletion
-- Handles bot configurations and metadata
-- Provides bot statistics and status tracking
+#### **ChatHistory** (`ChatHistory.tsx`)
+- Displays conversation history with load/restore functionality
+- Shows conversation previews with titles, dates, and message counts
+- Provides intuitive dropdown interface for conversation management
 
 #### **VectorStore** (`vectorstore.py`)
 - ChromaDB integration for vector storage
@@ -167,10 +170,10 @@ npm run dev
 - OCR integration for image text extraction
 - Intelligent text chunking with configurable overlap
 
-#### **Chat Engine** (`app.py` - query endpoints)
-- Ollama integration for LLM inference
-- Context-aware query processing
-- Markdown response formatting
+#### **ChatHistory** (`chat_history.py`)
+- Manages conversation persistence and retrieval
+- Handles conversation creation, message storage, and history loading
+- Provides RESTful API endpoints for chat history operations
 
 ## 🔧 API Reference
 
@@ -245,17 +248,6 @@ Content-Type: multipart/form-data
   "preview": ["--- From file: employee_handbook.pdf, page 1 ---", "Company policies and procedures...", "..."],
   "total_text_size": 75000,
   "files_processed": 3
-}
-```
-
-### Chat Endpoints
-
-#### Query Bot
-```http
-POST /bots/{bot_id}/query/
-Content-Type: application/json
-
-{
   "prompt": "What are the vacation policies?",
   "llm_model": "qwen3:1.7b",
   "top_k": 5,
@@ -275,7 +267,110 @@ Content-Type: application/json
 }
 ```
 
+### Chat History Endpoints
+
+#### List Conversations
+```http
+GET /bots/{bot_id}/chat/conversations
+```
+
+**Response:**
+```json
+{
+  "conversations": [
+    {
+      "id": "conv_123",
+      "title": "What are the vacation policies?",
+      "created_at": "2024-01-15T10:30:00Z",
+      "message_count": 4
+    }
+  ]
+}
+```
+
+#### Get Conversation
+```http
+GET /bots/{bot_id}/chat/conversations/{conversation_id}
+```
+
+**Response:**
+```json
+{
+  "conversation": {
+    "id": "conv_123",
+    "title": "Vacation Policy Discussion",
+    "created_at": "2024-01-15T10:30:00Z",
+    "messages": [
+      {
+        "id": "msg_1",
+        "role": "user",
+        "content": "What are the vacation policies?",
+        "timestamp": "2024-01-15T10:30:00Z"
+      },
+      {
+        "id": "msg_2",
+        "role": "assistant",
+        "content": "According to the employee handbook...",
+        "timestamp": "2024-01-15T10:30:05Z"
+      }
+    ]
+  }
+}
+```
+
+#### Create New Conversation
+```http
+POST /bots/{bot_id}/chat/conversations
+```
+
+**Response:**
+```json
+{
+  "conversation_id": "conv_456",
+  "message": "New conversation created"
+}
+```
+
+#### Add Message to Conversation
+```http
+POST /bots/{bot_id}/chat/conversations/{conversation_id}/messages
+Content-Type: application/json
+
+{
+  "role": "user",
+  "content": "What are the vacation policies?"
+}
+```
+
+**Response:**
+```json
+{
+  "message_id": "msg_789",
+  "message": "Message added to conversation"
+}
+```
+
 ## 🎯 Use Cases
+
+### **HR Assistant Bot**
+- Upload employee handbooks, policies, and HR documents
+- Answer questions about company policies, benefits, procedures
+- Assist with employee onboarding and training
+
+### **Legal Document Bot**
+- Process contracts, legal agreements, and case files
+- Provide insights on legal requirements and compliance
+- Help with document review and analysis
+
+### **Technical Documentation Bot**
+- Upload API documentation, user manuals, and technical guides
+- Answer questions about product features and troubleshooting
+- Assist developers with codebase understanding
+
+### **Research Assistant Bot**
+- Process academic papers, research documents, and reports
+- Summarize key findings and methodologies
+- Help with literature review and citation management
 
 ### **HR Assistant Bot**
 - Upload employee handbooks, policies, and HR documents
@@ -331,6 +426,7 @@ os-chatbot/
 │   ├── app.py              # Main FastAPI application
 │   ├── bot_manager.py      # Bot lifecycle management
 │   ├── vectorstore.py      # ChromaDB integration
+│   ├── chat_history.py     # Chat conversation persistence
 │   ├── requirements.txt    # Python dependencies
 │   └── bots_config.json    # Bot configurations storage
 ├── frontend/
@@ -338,6 +434,7 @@ os-chatbot/
 │   │   ├── components/
 │   │   │   ├── BotDashboard.tsx    # Bot management UI
 │   │   │   ├── BotChat.tsx        # Chat interface
+│   │   │   ├── ChatHistory.tsx    # Chat history component
 │   │   │   └── MainApp.tsx        # Main application
 │   │   ├── App.tsx                # React app entry point
 │   │   └── index.tsx              # React DOM entry point
@@ -575,7 +672,7 @@ jobs:
 ### **Phase 1: Enhanced Intelligence** (v2.0)
 - **Multi-Modal Processing**: Support for images, audio, and video files
 - **Advanced RAG**: Hybrid search combining semantic and keyword matching
-- **Conversation Memory**: Persistent chat history and context retention
+- **Conversation Memory**: ✅ **IMPLEMENTED** - Persistent chat history and context retention
 - **Custom Embeddings**: Fine-tuned embedding models for specific domains
 
 ### **Phase 2: Enterprise Integration** (v2.5)
