@@ -1,9 +1,9 @@
 # app.py
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from typing import List
+from typing import List, Optional
 from chunker import chunk_text
 from embeddings import get_embeddings_model
-from vectorstore import append_to_vectorstore, query_vectorstore
+from vectorstore import append_to_vectorstore, query_vectorstore, get_bot_vectorstore
 import ollama
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,15 +15,13 @@ from convert_to_json import convert_to_json
 import gc, time
 from langchain_chroma import Chroma
 from convert_to_json import ocr_lang_map
+from bot_manager import BotManager, BotConfig
 
-app = FastAPI(title="RAG Chatbot API")
+app = FastAPI(title="RAG Chatbot API with Bot Management")
 DB_DIR = "vector_db"
 
-# Global variable to store vectorstore
-vectorstore = None
-
-# Global variable to store processed data for reuse
-processed_data_cache = {}
+# Initialize bot manager
+bot_manager = BotManager()
 
 # CORS setup
 app.add_middleware(
@@ -38,19 +36,292 @@ class QueryRequest(BaseModel):
     prompt: str
     top_k: int = 5
     llm_model: str
+    bot_id: Optional[str] = None  # Add bot_id to query request
+
+class BotCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    chunk_size: int = 500
+    chunk_overlap: int = 50
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    ocr_lang: str = "eng"
+
+class BotUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    chunk_size: Optional[int] = None
+    chunk_overlap: Optional[int] = None
+    embedding_model: Optional[str] = None
+    ocr_lang: Optional[str] = None
+    is_active: Optional[bool] = None
 
 # =========================
-# Helper: Load vectorstore if needed
+# Bot Management Endpoints
 # =========================
-def load_vectorstore_if_needed(embedding_model_name="sentence-transformers/all-MiniLM-L6-v2"):
-    global vectorstore
-    if vectorstore is None and os.path.exists(DB_DIR):
-        embeddings_model = get_embeddings_model(model_name=embedding_model_name)
-        vectorstore = Chroma(
-            collection_name="rag_db",
-            embedding_function=embeddings_model,
-            persist_directory=DB_DIR
+
+@app.post("/bots/")
+async def create_bot(request: BotCreateRequest):
+    """Create a new bot"""
+    try:
+        bot = bot_manager.create_bot(
+            name=request.name,
+            description=request.description,
+            chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
+            embedding_model=request.embedding_model,
+            ocr_lang=request.ocr_lang
         )
+        return {"bot": bot.dict(), "message": "Bot created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating bot: {str(e)}")
+
+@app.get("/bots/")
+async def list_bots():
+    """List all bots"""
+    bots = bot_manager.get_all_bots()
+    return {"bots": [bot.dict() for bot in bots]}
+
+@app.get("/bots/active/")
+async def list_active_bots():
+    """List all active bots"""
+    bots = bot_manager.get_active_bots()
+    return {"bots": [bot.dict() for bot in bots]}
+
+@app.get("/bots/{bot_id}")
+async def get_bot(bot_id: str):
+    """Get a specific bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return {"bot": bot.dict()}
+
+@app.put("/bots/{bot_id}")
+async def update_bot(bot_id: str, request: BotUpdateRequest):
+    """Update a bot"""
+    bot = bot_manager.update_bot(bot_id, **request.dict(exclude_unset=True))
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return {"bot": bot.dict(), "message": "Bot updated successfully"}
+
+@app.delete("/bots/{bot_id}")
+async def delete_bot(bot_id: str):
+    """Delete a bot"""
+    success = bot_manager.delete_bot(bot_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return {"message": "Bot deleted successfully"}
+
+@app.get("/bots/{bot_id}/stats")
+async def get_bot_stats(bot_id: str):
+    """Get statistics for a bot"""
+    stats = bot_manager.get_bot_stats(bot_id)
+    if stats is None:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return {"stats": stats}
+
+# =========================
+# Updated Endpoints for Bot Support
+# =========================
+
+@app.post("/bots/{bot_id}/build_and_preview/")
+async def build_bot_with_preview(
+    bot_id: str,
+    files: List[UploadFile] = File(...),
+    chunk_size: int = Form(500),
+    chunk_overlap: int = Form(50),
+    embedding_model: str = Form("sentence-transformers/all-MiniLM-L6-v2"),
+    ocr_lang: str = Form("eng"),
+):
+    """Combined endpoint: Process files, recommend settings, and build database with preview"""
+    # Get bot configuration
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    # Use bot's settings as defaults, but allow override
+    chunk_size = chunk_size if chunk_size != 500 else bot.chunk_size
+    chunk_overlap = chunk_overlap if chunk_overlap != 50 else bot.chunk_overlap
+    embedding_model = embedding_model if embedding_model != "sentence-transformers/all-MiniLM-L6-v2" else bot.embedding_model
+    ocr_lang = ocr_lang if ocr_lang != "eng" else bot.ocr_lang
+
+    temp_files = []
+    all_texts = []
+    preview_lines = []
+
+    try:
+        # Process files and extract text
+        for f in files:
+            if not f.filename:
+                continue
+            content = await f.read()
+            if not content:
+                continue
+
+            temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
+            temp_files.append(temp_path)
+
+            try:
+                with os.fdopen(temp_fd, "wb") as temp:
+                    temp.write(content)
+                json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
+                for page in json_data["pages"]:
+                    text = page.get("content_en") or page.get("content_original", "")
+                    cleaned = text.replace("\n", " ").strip()
+                    if cleaned:
+                        all_texts.append(cleaned)
+                        if len(preview_lines) < 5:  # Show first 5 chunks
+                            preview_lines.append(f"--- From file: {f.filename}, page {page['page_number']} ---")
+                            preview_lines.append(cleaned[:300] + ("..." if len(cleaned) > 300 else ""))
+                            preview_lines.append("")
+            finally:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+
+        if not all_texts:
+            raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
+
+        combined_text = " ".join(all_texts)
+        chunks = chunk_text(combined_text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        embeddings_model = get_embeddings_model(model_name=embedding_model)
+
+        vectorstore = append_to_vectorstore(
+            chunks,
+            embeddings_model,
+            collection_name="rag_db",
+            persist_directory=bot.vectorstore_path
+        )
+
+        return {
+            "status": "database built",
+            "bot_id": bot_id,
+            "bot_name": bot.name,
+            "num_chunks": len(chunks),
+            "chunk_size": chunk_size,
+            "chunk_overlap": chunk_overlap,
+            "embedding_model": embedding_model,
+            "ocr_lang": ocr_lang,
+            "preview": preview_lines,
+            "total_text_size": len(combined_text),
+            "files_processed": len(files)
+        }
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[ERROR] build_bot_with_preview failed: {e}\n{tb}")
+        for p in temp_files:
+            if os.path.exists(p):
+                os.unlink(p)
+        raise HTTPException(status_code=500, detail=f"Error building database: {str(e)}")
+
+@app.post("/bots/{bot_id}/query/")
+async def query_bot_rag(bot_id: str, request: QueryRequest):
+    """Query a specific bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    embeddings_model = get_embeddings_model(model_name=bot.embedding_model)
+    vectorstore = get_bot_vectorstore(bot, embeddings_model)
+
+    if not vectorstore:
+        raise HTTPException(status_code=400, detail="Bot vectorstore not found. Please build the database first.")
+
+    try:
+        retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
+        context = " ".join(retrieved_chunks)
+        llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
+
+        if "qwen" in request.llm_model.lower():
+            response = ollama.chat(
+                model=request.llm_model,
+                messages=[
+                    {"role": "system", "content": "Answer directly. Do not output reasoning steps."},
+                    {"role": "user", "content": llm_prompt}
+                ],
+
+            )
+        else:
+            response = ollama.chat(
+                model=request.llm_model,
+                messages=[{"role": "user", "content": llm_prompt}]
+            )
+
+        return {
+            "answer": response,
+            "retrieved_chunks": retrieved_chunks,
+            "bot_id": bot_id,
+            "bot_name": bot.name
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error querying: {str(e)}")
+
+@app.get("/bots/{bot_id}/status/")
+async def bot_status(bot_id: str):
+    """Get status for a specific bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    stats = bot_manager.get_bot_stats(bot_id)
+    return {
+        "bot_id": bot_id,
+        "bot_name": bot.name,
+        "is_active": bot.is_active,
+        **stats
+    }
+
+# Keep legacy endpoints for backward compatibility (using default bot or first available)
+@app.post("/build_db/")
+async def build_db(
+    files: List[UploadFile] = File(...),
+    chunk_size: int = Form(500),
+    chunk_overlap: int = Form(50),
+    embedding_model: str = Form("sentence-transformers/all-MiniLM-L6-v2"),
+    ocr_lang: str = Form("eng"),
+    use_cached: bool = Form(False),
+):
+    """Legacy endpoint - creates a default bot if none exists"""
+    # Get or create default bot
+    bots = bot_manager.get_active_bots()
+    if not bots:
+        default_bot = bot_manager.create_bot(
+            name="Default Bot",
+            description="Default bot created for backward compatibility"
+        )
+        bot_id = default_bot.id
+    else:
+        bot_id = bots[0].id
+
+    # Use the new bot-specific endpoint
+    return await build_bot_db(bot_id, files, chunk_size, chunk_overlap, embedding_model, ocr_lang, use_cached)
+
+@app.post("/query/")
+async def query_rag(request: QueryRequest):
+    """Legacy endpoint - uses first available bot"""
+    bots = bot_manager.get_active_bots()
+    if not bots:
+        raise HTTPException(status_code=400, detail="No bots available. Please create a bot first.")
+
+    bot_id = bots[0].id
+    return await query_bot_rag(bot_id, request)
+
+@app.get("/status/")
+async def status():
+    """Legacy endpoint - returns status of all bots"""
+    bots = bot_manager.get_active_bots()
+    bot_statuses = []
+
+    for bot in bots:
+        stats = bot_manager.get_bot_stats(bot.id)
+        bot_statuses.append({
+            "bot_id": bot.id,
+            "bot_name": bot.name,
+            **stats
+        })
+
+    return {"bots": bot_statuses}
 
 # =========================
 # Endpoint 1: Download DB
