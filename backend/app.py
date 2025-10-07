@@ -16,12 +16,17 @@ import gc, time
 from langchain_chroma import Chroma
 from convert_to_json import ocr_lang_map
 from bot_manager import BotManager, BotConfig
+from chat_history import ChatHistoryManager
+from datetime import datetime
 
 app = FastAPI(title="RAG Chatbot API with Bot Management")
 DB_DIR = "vector_db"
 
 # Initialize bot manager
 bot_manager = BotManager()
+
+# Initialize chat history manager
+chat_manager = ChatHistoryManager()
 
 # CORS setup
 app.add_middleware(
@@ -271,6 +276,84 @@ async def bot_status(bot_id: str):
         "is_active": bot.is_active,
         **stats
     }
+
+# =========================
+# Chat History Endpoints
+# =========================
+
+@app.post("/bots/{bot_id}/chat/conversations")
+async def create_conversation(bot_id: str):
+    """Create a new conversation"""
+    try:
+        conversation_id = chat_manager.create_conversation(bot_id)
+        return {"conversation_id": conversation_id, "message": "Conversation created"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating conversation: {str(e)}")
+
+@app.get("/bots/{bot_id}/chat/conversations")
+async def get_conversations(bot_id: str):
+    """Get all conversations for a bot"""
+    try:
+        conversations = chat_manager.get_conversations(bot_id)
+        return {"conversations": conversations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting conversations: {str(e)}")
+
+@app.get("/bots/{bot_id}/chat/conversations/{conversation_id}")
+async def get_conversation(bot_id: str, conversation_id: str):
+    """Get a specific conversation"""
+    try:
+        conversation = chat_manager.get_conversation(bot_id, conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {"conversation": conversation}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting conversation: {str(e)}")
+
+@app.delete("/bots/{bot_id}/chat/conversations/{conversation_id}")
+async def delete_conversation(bot_id: str, conversation_id: str):
+    """Delete a conversation"""
+    try:
+        success = chat_manager.delete_conversation(bot_id, conversation_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return {"message": "Conversation deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting conversation: {str(e)}")
+
+@app.post("/bots/{bot_id}/chat/conversations/{conversation_id}/messages")
+async def save_message(bot_id: str, conversation_id: str, message: dict):
+    """Save a message to conversation"""
+    try:
+        required_fields = ["role", "content"]
+        for field in required_fields:
+            if field not in message:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+        chat_manager.save_message(bot_id, conversation_id, message["role"], message["content"])
+        return {"message": "Message saved successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving message: {str(e)}")
+
+@app.put("/bots/{bot_id}/chat/conversations/{conversation_id}/title")
+async def update_conversation_title(bot_id: str, conversation_id: str, title: dict):
+    """Update a conversation's title"""
+    try:
+        if "title" not in title:
+            raise HTTPException(status_code=400, detail="Missing title field")
+
+        chat_manager.update_conversation_title(bot_id, conversation_id, title["title"])
+        return {"message": "Conversation title updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating title: {str(e)}")
 
 # Keep legacy endpoints for backward compatibility (using default bot or first available)
 @app.post("/build_db/")

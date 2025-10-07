@@ -1,9 +1,10 @@
-// BotChat.tsx - Clean version
+// BotChat.tsx - Updated with Chat History
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDropzone } from 'react-dropzone';
+import ChatHistory from './ChatHistory.tsx';
 
 const API_BASE = "http://localhost:8000";
 
@@ -58,6 +59,10 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [tempChunkSize, setTempChunkSize] = useState(bot.chunk_size);
   const [tempOcrLang, setTempOcrLang] = useState(bot.ocr_lang);
 
+  // Chat history state
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(true);
+
   // Load bot stats on component mount
   useEffect(() => {
     loadBotStats();
@@ -90,13 +95,31 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
         bot_id: bot.id
       });
 
+      const botResponse = response.data.answer.message.content;
+
       setMessages(prev =>
         prev.slice(0, -1).concat([{
           user: userMessage,
-          bot: response.data.answer.message.content,
+          bot: botResponse,
           timestamp: new Date()
         }])
       );
+
+      // Save to chat history if we have a conversation ID
+      if (currentConversationId) {
+        try {
+          await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
+            role: 'user',
+            content: userMessage
+          });
+          await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
+            role: 'assistant',
+            content: botResponse
+          });
+        } catch (error) {
+          console.error('Failed to save message to history:', error);
+        }
+      }
     } catch (error: any) {
       setMessages(prev =>
         prev.slice(0, -1).concat([{
@@ -109,6 +132,21 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
     setPrompt('');
     setLoading(false);
+  };
+
+  const handleLoadConversation = async (conversationId: string, loadedMessages: any[]) => {
+    setCurrentConversationId(conversationId);
+    setMessages(loadedMessages);
+  };
+
+  const handleNewConversation = async () => {
+    try {
+      const response = await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations`);
+      setCurrentConversationId(response.data.conversation_id);
+      setMessages([]);
+    } catch (error) {
+      console.error('Failed to create new conversation:', error);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -360,128 +398,141 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
       )}
 
       {/* Chat Interface */}
-      <div className="bg-zinc-900/50 rounded-lg border border-zinc-700 flex flex-col h-[600px]">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 && (
-            <div className="text-center text-zinc-500 mt-16">
-              {botStats?.vectorstore_exists
-                ? `Start a conversation with ${bot.name}!`
-                : `${bot.name} needs files uploaded first. Click "Upload Files & Build Database" above.`
-              }
-            </div>
-          )}
-          {messages.map((msg, i) => (
-            <div key={i} className="space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                  You
+      <div className="flex h-[600px]">
+        {/* Chat History Sidebar */}
+        {showHistory && (
+          <ChatHistory
+            botId={bot.id}
+            onLoadConversation={handleLoadConversation}
+            currentConversationId={currentConversationId}
+            onNewConversation={handleNewConversation}
+          />
+        )}
+
+        {/* Main Chat Area */}
+        <div className="bg-zinc-900/50 rounded-lg border border-zinc-700 flex flex-col flex-1 min-w-0">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 && (
+              <div className="text-center text-zinc-500 mt-16">
+                {botStats?.vectorstore_exists
+                  ? `Start a conversation with ${bot.name}!`
+                  : `${bot.name} needs files uploaded first. Click "Upload Files & Build Database" above.`
+                }
+              </div>
+            )}
+            {messages.map((msg, i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                    You
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-zinc-300 font-medium mb-1">You</div>
+                    <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
+                      {msg.user}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="text-zinc-300 font-medium mb-1">You</div>
-                  <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
-                    {msg.user}
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                    Bot
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-zinc-300 font-medium mb-1">{bot.name}</div>
+                    <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
+                      {msg.bot === '...' ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Thinking...
+                        </div>
+                      ) : (
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code: ({ className, children, ...props}) => (
+                              <code className={`bg-black/30 px-1.5 py-0.5 rounded ${className || ""}`} {...props}>
+                                {children}
+                              </code>
+                            ),
+                            pre: ({children}) => (
+                              <pre className="bg-black/30 p-3 rounded overflow-x-auto">{children}</pre>
+                            ),
+                            ul: ({children}) => <ul className="list-disc pl-6 space-y-1">{children}</ul>,
+                            ol: ({children}) => <ol className="list-decimal pl-6 space-y-1">{children}</ol>,
+                            a: ({children, ...props}) => <a className="text-blue-400 underline" {...props}>{children}</a>,
+                            p: ({children}) => <p className="mb-2">{children}</p>,
+                          }}
+                        >
+                          {msg.bot}
+                        </ReactMarkdown>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                  Bot
-                </div>
-                <div className="flex-1">
-                  <div className="text-zinc-300 font-medium mb-1">{bot.name}</div>
-                  <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
-                    {msg.bot === '...' ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Thinking...
-                      </div>
-                    ) : (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          code: ({ className, children, ...props}) => (
-                            <code className={`bg-black/30 px-1.5 py-0.5 rounded ${className || ""}`} {...props}>
-                              {children}
-                            </code>
-                          ),
-                          pre: ({children}) => (
-                            <pre className="bg-black/30 p-3 rounded overflow-x-auto">{children}</pre>
-                          ),
-                          ul: ({children}) => <ul className="list-disc pl-6 space-y-1">{children}</ul>,
-                          ol: ({children}) => <ol className="list-decimal pl-6 space-y-1">{children}</ol>,
-                          a: ({children, ...props}) => <a className="text-blue-400 underline" {...props}>{children}</a>,
-                          p: ({children}) => <p className="mb-2">{children}</p>,
-                        }}
-                      >
-                        {msg.bot}
-                      </ReactMarkdown>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Controls */}
-        <div className="p-6 border-t border-zinc-700 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Model</label>
-              <select
-                value={llmModel}
-                onChange={(e) => setLlmModel(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="qwen3:1.7b">qwen3:1.7b (1.4 GB) - Fast & efficient</option>
-                <option value="tinyllama:latest">tinyllama:latest (637 MB) - Ultra-fast</option>
-                <option value="mistral:7b-instruct-q4_K_M">mistral:7b-instruct-q4_K_M (4.4 GB) - Most capable</option>
-                <option value="phi:latest">phi:latest (1.6 GB) - Great for reasoning</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">Top K Results</label>
-              <input
-                type="number"
-                value={topK}
-                onChange={(e) => setTopK(parseInt(e.target.value))}
-                className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                min="1"
-                max="20"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Instruction</label>
-              <input
-                type="text"
-                value={llmInstruction}
-                onChange={(e) => setLlmInstruction(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter instruction for the LLM"
-              />
-            </div>
+            ))}
           </div>
 
-          {/* Message Input */}
-          <div className="flex gap-2">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={`Ask ${bot.name} a question...`}
-              className="flex-1 px-4 py-3 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              rows={2}
-              disabled={loading}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !prompt.trim()}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 text-white rounded-lg font-medium transition-colors self-end"
-            >
-              {loading ? '...' : 'Send'}
-            </button>
+          {/* Controls */}
+          <div className="p-6 border-t border-zinc-700 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Model</label>
+                <select
+                  value={llmModel}
+                  onChange={(e) => setLlmModel(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="qwen3:1.7b">qwen3:1.7b (1.4 GB) - Fast & efficient</option>
+                  <option value="tinyllama:latest">tinyllama:latest (637 MB) - Ultra-fast</option>
+                  <option value="mistral:7b-instruct-q4_K_M">mistral:7b-instruct-q4_K_M (4.4 GB) - Most capable</option>
+                  <option value="phi:latest">phi:latest (1.6 GB) - Great for reasoning</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">Top K Results</label>
+                <input
+                  type="number"
+                  value={topK}
+                  onChange={(e) => setTopK(parseInt(e.target.value))}
+                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="20"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Instruction</label>
+                <input
+                  type="text"
+                  value={llmInstruction}
+                  onChange={(e) => setLlmInstruction(e.target.value)}
+                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter instruction for the LLM"
+                />
+              </div>
+            </div>
+
+            {/* Message Input */}
+            <div className="flex gap-2">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={`Ask ${bot.name} a question...`}
+                className="flex-1 px-4 py-3 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={2}
+                disabled={loading}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={loading || !prompt.trim()}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 text-white rounded-lg font-medium transition-colors self-end"
+              >
+                {loading ? '...' : 'Send'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
