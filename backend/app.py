@@ -28,10 +28,46 @@ bot_manager = BotManager()
 # Initialize chat history manager
 chat_manager = ChatHistoryManager()
 
-# CORS setup
+# Load environment variables
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# CORS setup - Updated for remote deployment support
+base_origins = [
+    "http://localhost:3000",      # Development
+    "http://127.0.0.1:3000",     # Alternative localhost
+    "http://localhost:3001",      # Alternative dev port
+    "http://127.0.0.1:3001",     # Alternative localhost port
+    "https://localhost:3000",     # HTTPS localhost
+    "https://127.0.0.1:3000",    # HTTPS localhost
+]
+
+# Add frontend URLs from environment variable
+frontend_urls_env = os.getenv('FRONTEND_URLS', '')
+if frontend_urls_env:
+    frontend_urls = [url.strip() for url in frontend_urls_env.split(',') if url.strip()]
+    base_origins.extend(frontend_urls)
+
+# Allow all origins in development and add common remote deployment patterns
+environment = os.getenv('ENVIRONMENT', 'development')
+if environment == 'development':
+    # In development, allow all origins for easier testing
+    origins = ["*"]
+else:
+    # In production, use configured origins
+    origins = base_origins
+    # Add common remote deployment patterns
+    origins.extend([
+        "http://localhost:30000",     # Common remote frontend port
+        "https://localhost:30000",    # HTTPS version
+        "http://127.0.0.1:30000",    # Alternative
+        "https://127.0.0.1:30000",   # HTTPS version
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

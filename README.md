@@ -97,6 +97,83 @@ npm run dev
 3. **Open your browser**
    Navigate to `http://localhost:3000`
 
+## 🌐 Remote Deployment
+
+### Quick Remote Deployment Setup
+
+If you're deploying to a remote server where the frontend and backend are on different ports or domains, follow these steps:
+
+1. **Configure Backend Environment**
+   ```bash
+   cd backend
+   cp .env.example .env
+   # Edit .env file:
+   # ENVIRONMENT=production
+   # FRONTEND_URLS=http://your-frontend-domain.com:30000,https://your-frontend-domain.com:30000
+   ```
+
+2. **Configure Frontend Environment**
+   ```bash
+   cd ../frontend
+   cp .env.example .env
+   # Edit .env file:
+   # VITE_API_BASE_URL=http://your-backend-domain.com:8000
+   ```
+
+3. **Start Backend on Remote Host**
+   ```bash
+   cd backend
+   uvicorn app:app --host 0.0.0.0 --port 8000
+   ```
+
+4. **Start Frontend on Remote Host**
+   ```bash
+   cd frontend
+   npm run dev -- --host 0.0.0.0 --port 30000
+   ```
+
+5. **Access Application**
+   Navigate to `http://your-remote-host:30000`
+
+### Configuration Options
+
+#### Backend Configuration (.env)
+```env
+# Environment (development, production, etc.)
+ENVIRONMENT=development
+
+# Frontend URLs for CORS (comma-separated)
+FRONTEND_URLS=http://localhost:3000,http://your-domain.com:30000
+
+# Backend server settings
+HOST=0.0.0.0
+PORT=8000
+```
+
+#### Frontend Configuration (.env)
+```env
+# API Backend URL
+VITE_API_BASE_URL=http://localhost:8000
+
+# Frontend server settings
+VITE_HOST=0.0.0.0
+VITE_PORT=3000
+```
+
+### Troubleshooting Remote Deployment
+
+**Problem**: Frontend can't connect to backend
+- **Solution**: Check that `VITE_API_BASE_URL` in frontend `.env` matches your backend URL
+- **Solution**: Ensure backend CORS allows your frontend domain in `FRONTEND_URLS`
+
+**Problem**: CORS errors
+- **Solution**: Add your frontend URL to `FRONTEND_URLS` in backend `.env`
+- **Solution**: Set `ENVIRONMENT=development` in backend for permissive CORS during testing
+
+**Problem**: Port conflicts
+- **Solution**: Change ports in `.env` files for both frontend and backend
+- **Solution**: Update corresponding URLs in both `.env` files
+
 ## 📋 Usage Guide
 
 ### Creating Your First Bot

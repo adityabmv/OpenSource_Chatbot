@@ -5,8 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDropzone } from 'react-dropzone';
 import ChatHistory from './ChatHistory.tsx';
-
-const API_BASE = "http://localhost:8000";
+import { API_BASE } from '../config';
 
 interface Bot {
   id: string;

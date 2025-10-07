@@ -11,3 +11,8 @@ python-multipart
 pandas
 chromadb
 ollama
+python-dotenv
+python-pptx
+pytesseract
+Pillow
+opencv-python
