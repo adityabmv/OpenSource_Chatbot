@@ -60,27 +60,33 @@ function App() {
     setDbStatus("Error uploading JSON file.");
   }
 };
-  const handleRecommendChunkSettings = async () => {
-  if (files.length === 0) return;
+  const handleProcessAndRecommend = async () => {
+    if (files.length === 0) return;
 
-  const formData = new FormData();
-  files.forEach((file) => formData.append("files", file));
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    formData.append("ocr_lang", ocrLang);
 
-  try {
-    const res = await axios.post(`${API_BASE}/recommend_chunk_settings/`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    try {
+      setBuildStatus('building');
+      const res = await axios.post(`${API_BASE}/process_and_recommend/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-    setChunkSize(res.data.recommended_chunk_size);
-    setChunkOverlap(res.data.recommended_chunk_overlap);
+      setChunkSize(res.data.recommended_chunk_size);
+      setChunkOverlap(res.data.recommended_chunk_overlap);
+      setJsonPreview(res.data.preview || null);
 
-    alert(
-      `✅ Recommended settings applied!\n\n📦 File size: ${res.data.total_file_size_kb} KB\n🔹 Chunk Size: ${res.data.recommended_chunk_size}\n🔸 Overlap: ${res.data.recommended_chunk_overlap}`
-    );
-  } catch (error) {
-    alert("❌ Failed to fetch recommended chunk settings.");
-  }
-};
+      alert(
+        `✅ Processed & Recommended!\n\n📄 Text size: ${res.data.total_text_size_kb} KB (from ${res.data.total_file_size_kb} KB file)\n🔹 Chunk Size: ${res.data.recommended_chunk_size}\n🔸 Overlap: ${res.data.recommended_chunk_overlap}\n📖 Pages: ${res.data.num_pages}`
+      );
+      setBuildStatus('success');
+    } catch (error) {
+      setBuildStatus('error');
+      setBuildError('Failed to process and recommend settings');
+      alert("❌ Failed to process files and get recommendations.");
+    }
+  };
 
   // File upload
   const onDrop = (acceptedFiles: File[]) => setFiles(acceptedFiles);
@@ -106,6 +112,7 @@ function App() {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     formData.append("ocr_lang", ocrLang);
+    formData.append("use_cached", "true"); // Use cached data if available
     try {
       setBuildStatus('building');
       const res = await axios.post(
@@ -114,7 +121,7 @@ function App() {
         { headers: { "Content-Type": "multipart/form-data" } }
       );
       setBuildStatus('success');
-      setDbStatus(`✅ Database built successfully! ${res.data.num_chunks} chunks created.`);
+      setDbStatus(`✅ Database built successfully! ${res.data.num_chunks} chunks created.${res.data.used_cache ? ' (Used cached data)' : ''}`);
       setJsonPreview(res.data.preview || null);
       setFiles([]);
     } catch (e: any) {
@@ -218,10 +225,10 @@ function App() {
           </div>
           <button
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-all duration-200"
-            onClick={handleRecommendChunkSettings}
-            disabled={files.length === 0}
+            onClick={handleProcessAndRecommend}
+            disabled={files.length === 0 || buildStatus === 'building'}
           >
-            Use Recommended Size
+            {buildStatus === 'building' ? 'Processing...' : 'Process & Recommend'}
           </button>
           <div className="flex gap-2">
             <label className="text-zinc-300 font-semibold flex-shrink-0">Embedding Model:</label>
