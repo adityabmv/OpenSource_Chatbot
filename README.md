@@ -5,9 +5,12 @@
 [![React](https://img.shields.io/badge/React-18.0+-61dafb.svg)](https://reactjs.org/)
 
 > **A powerful, scalable AI chatbot system that supports multiple specialized bots with individual knowledge bases, file processing, and intelligent conversations.**
+<img width="2006" height="1068" alt="image" src="https://github.com/user-attachments/assets/8dfdb3b9-2e54-49e9-af9e-0dd8343f54b4" />
 
+
+<img width="2181" height="1194" alt="image" src="https://github.com/user-attachments/assets/2f32f73e-b6c8-4d7a-814a-b8efe5d11a0d" />
+<img width="1797" height="844" alt="image" src="https://github.com/user-attachments/assets/3a9a4c65-0a18-45c5-9126-8d2da32424ad" />
 ## 🌟 Features
-
 ### 🤖 **Multi-Bot Architecture**
 - **Individual Bot Management**: Create and manage multiple specialized AI bots
 - **Isolated Knowledge Bases**: Each bot maintains its own vector database
