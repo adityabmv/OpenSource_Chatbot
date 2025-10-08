@@ -77,7 +77,9 @@ class QueryRequest(BaseModel):
     prompt: str
     top_k: int = 5
     llm_model: str
-    bot_id: Optional[str] = None  # Add bot_id to query request
+    bot_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+    message_id: Optional[str] = None
 
 class BotCreateRequest(BaseModel):
     name: str
@@ -550,6 +552,22 @@ async def query_rag(request: QueryRequest):
     if not vectorstore:
         raise HTTPException(status_code=400, detail="Vector store not built yet. Please build database first.")
 
+    # If this is a historical message and we have conversation_id, return the stored response
+    if request.conversation_id and request.message_id:
+        try:
+            stored_messages = chat_manager.get_conversation_messages(request.bot_id, request.conversation_id)
+            for msg in stored_messages:
+                if msg["id"] == request.message_id and msg["role"] == "assistant":
+                    return {
+                        "answer": msg["content"],
+                        "retrieved_chunks": [],
+                        "from_history": True
+                    }
+        except Exception as e:
+            print(f"Warning: Could not retrieve history: {str(e)}")
+            # Continue with normal query if history retrieval fails
+
+    # Generate new response
     try:
         retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
         context = " ".join(retrieved_chunks)
@@ -561,8 +579,7 @@ async def query_rag(request: QueryRequest):
                 messages=[
                     {"role": "system", "content": "Answer directly. Do not output reasoning steps."},
                     {"role": "user", "content": llm_prompt}
-                ],
-                
+                ]
             )
         else:
             response = ollama.chat(
@@ -570,9 +587,18 @@ async def query_rag(request: QueryRequest):
                 messages=[{"role": "user", "content": llm_prompt}]
             )
 
+        # Save both question and response to history if we have a conversation
+        if request.conversation_id and request.bot_id:
+            try:
+                chat_manager.save_message(request.bot_id, request.conversation_id, "user", request.prompt)
+                chat_manager.save_message(request.bot_id, request.conversation_id, "assistant", response["content"])
+            except Exception as e:
+                print(f"Warning: Could not save to history: {str(e)}")
+
         return {
-            "answer": response,
-            "retrieved_chunks": retrieved_chunks
+            "answer": response["content"] if isinstance(response, dict) else response,
+            "retrieved_chunks": retrieved_chunks,
+            "from_history": False
         }
 
     except Exception as e:

@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDropzone } from 'react-dropzone';
 import ChatHistory from './ChatHistory.tsx';
-import { API_BASE } from '../config';
+import { API_BASE } from '../config.ts';
 
 interface Bot {
   id: string;
