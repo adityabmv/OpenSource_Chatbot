@@ -35,7 +35,19 @@ interface BotChatProps {
 
 const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Array<{user: string, bot: string, timestamp: Date}>>([]);
+  const [messages, setMessages] = useState<Array<{
+    user: string, 
+    bot: string, 
+    timestamp: Date,
+    sources?: Array<{
+      content: string,
+      metadata: {
+        source: string,
+        page?: number,
+        chunk_index: number
+      }
+    }>
+  }>>([]);
   const [loading, setLoading] = useState(false);
   const [llmModel, setLlmModel] = useState('qwen3:1.7b');
   const [llmInstruction, setLlmInstruction] = useState('Answer in concise Markdown. Use bullet points when listing; cite brief sources when relevant.');
@@ -55,7 +67,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [loadingStats, setLoadingStats] = useState(false);
 
   // Preprocessing settings (can be different from bot defaults)
-  const [tempChunkSize, setTempChunkSize] = useState(bot.chunk_size);
+  const [tempChunkSize, setTempChunkSize] = useState("default");
   const [tempOcrLang, setTempOcrLang] = useState(bot.ocr_lang);
 
   // Chat history state
@@ -95,12 +107,14 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
       });
 
       const botResponse = response.data.answer.message.content;
+      const sources = response.data.retrieved_chunks;
 
       setMessages(prev =>
         prev.slice(0, -1).concat([{
           user: userMessage,
           bot: botResponse,
-          timestamp: new Date()
+          timestamp: new Date(),
+          sources: sources
         }])
       );
 
@@ -231,15 +245,15 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
             <div>
               <div className="text-zinc-400">Chunk Size</div>
-              <div className="text-white font-medium">{bot.chunk_size}</div>
+              <div className="text-white font-medium">Default</div>
             </div>
             <div>
               <div className="text-zinc-400">Chunk Overlap</div>
-              <div className="text-white font-medium">{bot.chunk_overlap}</div>
+              <div className="text-white font-medium">Default</div>
             </div>
             <div>
               <div className="text-zinc-400">Embedding Model</div>
-              <div className="text-white font-medium text-xs">{bot.embedding_model.split('/').pop()}</div>
+              <div className="text-white font-medium text-xs">Default</div>
             </div>
             <div>
               <div className="text-zinc-400">OCR Language</div>
@@ -341,7 +355,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                 type="number"
                 className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={tempChunkSize}
-                onChange={(e) => setTempChunkSize(parseInt(e.target.value))}
+                onChange={(e) => setTempChunkSize(e.target.value)}
                 placeholder="500"
               />
             </div>
@@ -468,6 +482,33 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                         </ReactMarkdown>
                       )}
                     </div>
+                    {/* Source citations */}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-2 text-sm">
+                        <div className="text-zinc-400 font-medium mb-1">Sources:</div>
+                        <div className="space-y-2">
+                          {msg.sources.map((source, idx) => (
+                            <div key={idx} className="bg-zinc-800/30 rounded p-2">
+                              <div className="flex gap-2 text-xs text-zinc-400 mb-1">
+                                <span className="font-medium">Source:</span>
+                                <span>{source.metadata.source}</span>
+                                {source.metadata.page && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Page {source.metadata.page}</span>
+                                  </>
+                                )}
+                                <span>•</span>
+                                <span>Chunk {source.metadata.chunk_index}</span>
+                              </div>
+                              <div className="text-zinc-300 text-sm line-clamp-2">
+                                {source.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

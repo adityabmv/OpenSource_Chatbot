@@ -29,7 +29,7 @@ class BotManager:
         """Load bots from storage file"""
         if os.path.exists(self.storage_path):
             try:
-                with open(self.storage_path, 'r') as f:
+                with open(self.storage_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     for bot_data in data.get('bots', []):
                         bot = BotConfig(**bot_data)
@@ -37,19 +37,45 @@ class BotManager:
             except Exception as e:
                 print(f"Error loading bots: {e}")
                 self.bots = {}
+        else:
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+            # Initialize with empty data
+            self.save_bots()
 
     def save_bots(self):
         """Save bots to storage file"""
         try:
-            os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+            # Ensure directory exists
+            dir_path = os.path.dirname(self.storage_path)
+            if dir_path:
+                os.makedirs(dir_path, exist_ok=True)
+                
+            # Prepare data
             data = {
                 'bots': [bot.dict() for bot in self.bots.values()],
                 'last_updated': datetime.now().isoformat()
             }
-            with open(self.storage_path, 'w') as f:
+            
+            # Write to temporary file first
+            temp_path = f"{self.storage_path}.tmp"
+            with open(temp_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, default=str)
+            
+            # Atomic rename to final location
+            if os.path.exists(self.storage_path):
+                os.replace(temp_path, self.storage_path)
+            else:
+                os.rename(temp_path, self.storage_path)
+                
         except Exception as e:
             print(f"Error saving bots: {e}")
+            if os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+            raise
 
     def create_bot(self, name: str, description: str = "", **kwargs) -> BotConfig:
         """Create a new bot"""
@@ -147,7 +173,7 @@ class BotManager:
             from langchain_chroma import Chroma
             from embeddings import get_embeddings_model
 
-            embeddings_model = get_embeddings_model(model_name=bot.embedding_model)
+            embeddings_model = get_embeddings_model()
             vectorstore = Chroma(
                 collection_name="rag_db",
                 embedding_function=embeddings_model,

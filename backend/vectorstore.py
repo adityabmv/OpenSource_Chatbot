@@ -29,7 +29,26 @@ def query_vectorstore(vectorstore, query, top_k=5):
     Retrieve top_k chunks relevant to query from a specific vectorstore.
     """
     results = vectorstore.similarity_search(query, k=top_k)
-    return [r.page_content for r in results]
+    
+    # Display retrieved chunks in terminal with formatting
+    print("\n" + "="*80)
+    print(f"Query: {query}")
+    print("Retrieved chunks:")
+    for i, result in enumerate(results, 1):
+        print(f"\nChunk {i}:")
+        print("-"*40)
+        print(result.page_content.strip())
+    print("="*80 + "\n")
+    
+    # Return both content and metadata
+    return [{
+        'content': r.page_content,
+        'metadata': {
+            'source': r.metadata.get('source', 'Unknown'),
+            'page': r.metadata.get('page', None),
+            'chunk_index': i
+        }
+    } for i, r in enumerate(results, 1)]
 
 def get_bot_vectorstore(bot_config, embeddings_model) -> Optional[Chroma]:
     """Get or create a vectorstore for a specific bot"""

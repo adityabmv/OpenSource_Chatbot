@@ -22,11 +22,22 @@ from datetime import datetime
 app = FastAPI(title="RAG Chatbot API with Bot Management")
 DB_DIR = "vector_db"
 
-# Initialize bot manager
-bot_manager = BotManager()
+# Initialize bot manager with absolute path
+BOTS_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bots_config.json")
+bot_manager = BotManager(storage_path=BOTS_CONFIG_PATH)
 
 # Initialize chat history manager
 chat_manager = ChatHistoryManager()
+
+def load_vectorstore_if_needed():
+    """Utility function to load vectorstore if it exists"""
+    global vectorstore
+    if not vectorstore:
+        try:
+            vectorstore = Chroma(persist_directory=DB_DIR, embedding_function=None)
+        except Exception as e:
+            print(f"Warning: Could not load vectorstore: {e}")
+            vectorstore = None
 
 # Load environment variables
 import os
@@ -170,22 +181,12 @@ async def get_bot_stats(bot_id: str):
 async def build_bot_with_preview(
     bot_id: str,
     files: List[UploadFile] = File(...),
-    chunk_size: int = Form(500),
-    chunk_overlap: int = Form(50),
-    embedding_model: str = Form("sentence-transformers/all-MiniLM-L6-v2"),
-    ocr_lang: str = Form("eng"),
 ):
-    """Combined endpoint: Process files, recommend settings, and build database with preview"""
+    """Process files and build database using bot's configured settings"""
     # Get bot configuration
     bot = bot_manager.get_bot(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Bot not found")
-
-    # Use bot's settings as defaults, but allow override
-    chunk_size = chunk_size if chunk_size != 500 else bot.chunk_size
-    chunk_overlap = chunk_overlap if chunk_overlap != 50 else bot.chunk_overlap
-    embedding_model = embedding_model if embedding_model != "sentence-transformers/all-MiniLM-L6-v2" else bot.embedding_model
-    ocr_lang = ocr_lang if ocr_lang != "eng" else bot.ocr_lang
 
     temp_files = []
     all_texts = []
@@ -206,7 +207,7 @@ async def build_bot_with_preview(
             try:
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
-                json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
+                json_data = convert_to_json(temp_path, ocr_lang=bot.ocr_lang)
                 for page in json_data["pages"]:
                     text = page.get("content_en") or page.get("content_original", "")
                     cleaned = text.replace("\n", " ").strip()
@@ -224,8 +225,9 @@ async def build_bot_with_preview(
             raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
 
         combined_text = " ".join(all_texts)
-        chunks = chunk_text(combined_text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        embeddings_model = get_embeddings_model(model_name=embedding_model)
+        # Use default chunk parameters since they've been removed from bot config
+        chunks = chunk_text(combined_text)
+        embeddings_model = get_embeddings_model()
 
         vectorstore = append_to_vectorstore(
             chunks,
@@ -239,10 +241,12 @@ async def build_bot_with_preview(
             "bot_id": bot_id,
             "bot_name": bot.name,
             "num_chunks": len(chunks),
-            "chunk_size": chunk_size,
-            "chunk_overlap": chunk_overlap,
-            "embedding_model": embedding_model,
-            "ocr_lang": ocr_lang,
+            "settings": {
+                "chunk_size": "default",
+                "chunk_overlap": "default",
+                "embedding_model": "default",
+                "ocr_lang": bot.ocr_lang
+            },
             "preview": preview_lines,
             "total_text_size": len(combined_text),
             "files_processed": len(files)
@@ -271,8 +275,9 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
         raise HTTPException(status_code=400, detail="Bot vectorstore not found. Please build the database first.")
 
     try:
-        retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
-        context = " ".join(retrieved_chunks)
+        chunk_results = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
+        # Extract just the content for the LLM context
+        context = " ".join(chunk['content'] for chunk in chunk_results)
         llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
 
         if "qwen" in request.llm_model.lower():
@@ -292,7 +297,7 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
 
         return {
             "answer": response,
-            "retrieved_chunks": retrieved_chunks,
+            "retrieved_chunks": chunk_results,
             "bot_id": bot_id,
             "bot_name": bot.name
         }
@@ -416,7 +421,7 @@ async def build_db(
         bot_id = bots[0].id
 
     # Use the new bot-specific endpoint
-    return await build_bot_db(bot_id, files, chunk_size, chunk_overlap, embedding_model, ocr_lang, use_cached)
+    return await build_bot_with_preview(bot_id, files)
 
 @app.post("/query/")
 async def query_rag(request: QueryRequest):
@@ -512,8 +517,9 @@ async def build_db(
             raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
 
         combined_text = " ".join(all_texts)
-        chunks = chunk_text(combined_text, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        embeddings_model = get_embeddings_model(model_name=embedding_model)
+        # Use default chunk parameters since they've been removed from bot config
+        chunks = chunk_text(combined_text)
+        embeddings_model = get_embeddings_model()
 
         vectorstore = append_to_vectorstore(
                                                 chunks,

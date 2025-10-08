@@ -1,0 +1,38 @@
+{
+  "conversations": [
+    {
+      "id": "conv_20251008_180204_3be6016e",
+      "title": "HI",
+      "created_at": "2025-10-08T18:02:04.917151",
+      "updated_at": "2025-10-08T18:02:20.112349",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "HI",
+          "timestamp": "2025-10-08T18:02:20.079121"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "\nCareer Counselor\n\nHi Aniruddh! Welcome to our AI-powered career guidance system. How can I assist you today?",
+          "timestamp": "2025-10-08T18:02:20.112349"
+        }
+      ]
+    },
+    {
+      "id": "conv_20251008_180316_215e2f6c",
+      "title": "New Conversation",
+      "created_at": "2025-10-08T18:03:16.514199",
+      "updated_at": "2025-10-08T18:03:16.514199",
+      "messages": []
+    },
+    {
+      "id": "conv_20251008_180318_49c0ae9e",
+      "title": "New Conversation",
+      "created_at": "2025-10-08T18:03:18.897517",
+      "updated_at": "2025-10-08T18:03:18.897517",
+      "messages": []
+    }
+  ]
+}

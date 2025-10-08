@@ -7,8 +7,6 @@ interface Bot {
   id: string;
   name: string;
   description: string;
-  chunk_size: number;
-  chunk_overlap: number;
   embedding_model: string;
   ocr_lang: string;
   created_at: string;
@@ -39,8 +37,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   const [newBot, setNewBot] = useState({
     name: '',
     description: '',
-    chunk_size: 500,
-    chunk_overlap: 50,
     embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
     ocr_lang: 'eng'
   });
@@ -83,8 +79,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
       setNewBot({
         name: '',
         description: '',
-        chunk_size: 500,
-        chunk_overlap: 50,
         embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
         ocr_lang: 'eng'
       });
@@ -173,29 +167,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">Chunk Size</label>
-                <input
-                  type="number"
-                  value={newBot.chunk_size}
-                  onChange={(e) => setNewBot({...newBot, chunk_size: parseInt(e.target.value)})}
-                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="100"
-                  max="2000"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">Chunk Overlap</label>
-                <input
-                  type="number"
-                  value={newBot.chunk_overlap}
-                  onChange={(e) => setNewBot({...newBot, chunk_overlap: parseInt(e.target.value)})}
-                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="0"
-                  max="500"
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">OCR Language</label>
                 <select
@@ -276,18 +248,10 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-zinc-400">Chunk Size</div>
-                  <div className="text-white font-medium">{bot.chunk_size}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400">Chunk Overlap</div>
-                  <div className="text-white font-medium">{bot.chunk_overlap}</div>
-                </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-zinc-400">Embedding Model</div>
-                  <div className="text-white font-medium text-xs">{bot.embedding_model.split('/').pop()}</div>
+                  <div className="text-white font-medium text-xs">Default</div>
                 </div>
                 <div>
                   <div className="text-zinc-400">OCR Language</div>
