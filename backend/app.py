@@ -160,10 +160,17 @@ async def update_bot(bot_id: str, request: BotUpdateRequest):
 @app.delete("/bots/{bot_id}")
 async def delete_bot(bot_id: str):
     """Delete a bot"""
-    success = bot_manager.delete_bot(bot_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Bot not found")
-    return {"message": "Bot deleted successfully"}
+    try:
+        success = bot_manager.delete_bot(bot_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Bot not found")
+        return {"message": "Bot deleted successfully"}
+    except Exception as e:
+        # Log the error but return success if the bot was removed from config
+        print(f"Warning: Error during bot deletion: {e}")
+        if bot_id not in bot_manager.bots:
+            return {"message": "Bot configuration deleted successfully", "warning": "Some files may need manual cleanup"}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/bots/{bot_id}/stats")
 async def get_bot_stats(bot_id: str):
@@ -208,14 +215,28 @@ async def build_bot_with_preview(
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
                 json_data = convert_to_json(temp_path, ocr_lang=bot.ocr_lang)
+                # Process each page and create structured chunks with metadata
                 for page in json_data["pages"]:
                     text = page.get("content_en") or page.get("content_original", "")
-                    cleaned = text.replace("\n", " ").strip()
-                    if cleaned:
-                        all_texts.append(cleaned)
-                        if len(preview_lines) < 5:  # Show first 5 chunks
+                    if text.strip():
+                        # Create chunks with page-level metadata
+                        page_chunks = chunk_text(
+                            text=text,
+                            chunk_size=300,
+                            chunk_overlap=30,
+                            metadata={
+                                "file_name": f.filename,
+                                "page_number": page["page_number"],
+                                "language": page.get("language", "unknown"),
+                                "source_type": "document"
+                            }
+                        )
+                        all_texts.extend(page_chunks)
+                        
+                        # Add preview for first few chunks
+                        if len(preview_lines) < 5:
                             preview_lines.append(f"--- From file: {f.filename}, page {page['page_number']} ---")
-                            preview_lines.append(cleaned[:300] + ("..." if len(cleaned) > 300 else ""))
+                            preview_lines.append(page_chunks[0]["text"][:300] + "...")
                             preview_lines.append("")
             finally:
                 if os.path.exists(temp_path):
@@ -224,9 +245,8 @@ async def build_bot_with_preview(
         if not all_texts:
             raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
 
-        combined_text = " ".join(all_texts)
-        # Use default chunk parameters since they've been removed from bot config
-        chunks = chunk_text(combined_text)
+        # all_texts now contains chunks with metadata
+        chunks = all_texts  # Each chunk already has its text and metadata
         embeddings_model = get_embeddings_model()
 
         vectorstore = append_to_vectorstore(
@@ -242,14 +262,15 @@ async def build_bot_with_preview(
             "bot_name": bot.name,
             "num_chunks": len(chunks),
             "settings": {
-                "chunk_size": "default",
-                "chunk_overlap": "default",
+                "chunk_size": 300,
+                "chunk_overlap": 30,
                 "embedding_model": "default",
                 "ocr_lang": bot.ocr_lang
             },
             "preview": preview_lines,
-            "total_text_size": len(combined_text),
-            "files_processed": len(files)
+            "total_text_size": sum(len(chunk["text"]) for chunk in chunks),
+            "files_processed": 1,  # Only count the actual source file
+            "source_files": [f.filename for f in files]  # List of original file names
         }
 
     except Exception as e:
@@ -489,6 +510,13 @@ async def build_db(
                 content = await f.read()
                 if not content:
                     continue
+
+                # Create metadata for the file
+                file_metadata = {
+                    "source": f.filename,
+                    "file_type": os.path.splitext(f.filename)[1],
+                    "uploaded_at": datetime.now().isoformat()
+                }
 
                 temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
                 temp_files.append(temp_path)
