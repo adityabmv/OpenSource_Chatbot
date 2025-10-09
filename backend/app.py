@@ -4,7 +4,7 @@ from typing import List, Optional
 from chunker import chunk_text
 from embeddings import get_embeddings_model
 from vectorstore import append_to_vectorstore, query_vectorstore, get_bot_vectorstore
-import ollama
+from llm_client import LLMClient
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -28,6 +28,9 @@ bot_manager = BotManager(storage_path=BOTS_CONFIG_PATH)
 
 # Initialize chat history manager
 chat_manager = ChatHistoryManager()
+
+# Initialize LLM client
+llm_client = LLMClient()
 
 def load_vectorstore_if_needed():
     """Utility function to load vectorstore if it exists"""
@@ -301,23 +304,18 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
         context = " ".join(chunk['content'] for chunk in chunk_results)
         llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
 
-        if "qwen" in request.llm_model.lower():
-            response = ollama.chat(
-                model=request.llm_model,
-                messages=[
-                    {"role": "system", "content": "Answer directly. Do not output reasoning steps."},
-                    {"role": "user", "content": llm_prompt}
-                ],
-
-            )
-        else:
-            response = ollama.chat(
-                model=request.llm_model,
-                messages=[{"role": "user", "content": llm_prompt}]
-            )
+        messages = [
+            {"role": "system", "content": "Answer directly based on the given context. Be concise and accurate."},
+            {"role": "user", "content": llm_prompt}
+        ]
+        response = await llm_client.chat(messages, model=request.llm_model)
 
         return {
-            "answer": response,
+            "answer": {
+                "message": {
+                    "content": response
+                }
+            },
             "retrieved_chunks": chunk_results,
             "bot_id": bot_id,
             "bot_name": bot.name
@@ -338,8 +336,20 @@ async def bot_status(bot_id: str):
         "bot_id": bot_id,
         "bot_name": bot.name,
         "is_active": bot.is_active,
-        **stats
+        "source_files": stats["num_files"],  # Renamed to be clearer
+        "chunks": stats["num_chunks"],
+        "db_size_mb": round(stats["vectorstore_size_mb"], 2),
+        "status": "Ready" if stats["vectorstore_exists"] else "Not Built"
     }
+
+# =========================
+# Model Management Endpoints
+# =========================
+
+@app.get("/models/available")
+async def get_available_models():
+    """Get list of available LLM models"""
+    return {"models": llm_client.get_available_models()}
 
 # =========================
 # Chat History Endpoints
@@ -601,41 +611,68 @@ async def query_rag(request: QueryRequest):
             print(f"Warning: Could not retrieve history: {str(e)}")
             # Continue with normal query if history retrieval fails
 
-    # Generate new response
+        # Generate new response
     try:
-        retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
-        context = " ".join(retrieved_chunks)
+        # Check if vectorstore is initialized
+        if not vectorstore:
+            raise HTTPException(status_code=500, detail="Vector store not initialized")
+
+        # Query vectorstore with error handling
+        try:
+            retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
+            if not retrieved_chunks:
+                print("Warning: No relevant chunks found for the query")
+                retrieved_chunks = []
+        except Exception as e:
+            print(f"Vector store query error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Vector store query failed: {str(e)}")
+
+        context = " ".join(retrieved_chunks) if retrieved_chunks else ""
         llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
 
-        if "qwen" in request.llm_model.lower():
-            response = ollama.chat(
-                model=request.llm_model,
-                messages=[
-                    {"role": "system", "content": "Answer directly. Do not output reasoning steps."},
-                    {"role": "user", "content": llm_prompt}
-                ]
-            )
-        else:
-            response = ollama.chat(
-                model=request.llm_model,
-                messages=[{"role": "user", "content": llm_prompt}]
-            )
+        messages = [
+            {"role": "system", "content": "Answer directly based on the given context. Be concise and accurate."},
+            {"role": "user", "content": llm_prompt}
+        ]
 
-        # Save both question and response to history if we have a conversation
+        try:
+            response = await llm_client.chat(messages, model=request.llm_model)
+        except Exception as e:
+            print(f"LLM query error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"LLM query failed: {str(e)}")
+
+        # Save to history if conversation tracking is enabled
         if request.conversation_id and request.bot_id:
             try:
                 chat_manager.save_message(request.bot_id, request.conversation_id, "user", request.prompt)
-                chat_manager.save_message(request.bot_id, request.conversation_id, "assistant", response["content"])
+                chat_manager.save_message(request.bot_id, request.conversation_id, "assistant", response)
             except Exception as e:
                 print(f"Warning: Could not save to history: {str(e)}")
 
+        # Get bot name safely
+        bot_name = None
+        if request.bot_id:
+            try:
+                bot = bot_manager.get_bot_by_id(request.bot_id)
+                bot_name = bot.name if bot else None
+            except Exception as e:
+                print(f"Warning: Could not get bot name: {str(e)}")
+
         return {
-            "answer": response["content"] if isinstance(response, dict) else response,
+            "answer": {
+                "message": {
+                    "content": response
+                }
+            },
             "retrieved_chunks": retrieved_chunks,
-            "from_history": False
+            "bot_id": request.bot_id,
+            "bot_name": bot_name
         }
 
+    except HTTPException as e:
+        raise e  # Re-raise HTTP exceptions as is
     except Exception as e:
+        print(f"Unexpected error in query endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error querying: {str(e)}")
 
 # =========================
