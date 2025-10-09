@@ -16,7 +16,7 @@ import { Bot } from './types/bot';
 type ViewMode = 'dashboard' | 'chat' | 'legacy';
 
 function App() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
   
@@ -187,10 +187,23 @@ function App() {
       <div className="w-full max-w-7xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight text-white drop-shadow-lg font-futuristic">
-            DIY RAG BOT
-          </h1>
-          <p className="text-zinc-400 mb-4 text-lg">Build Your own bot-No code</p>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1"></div>
+            <div className="text-center flex-grow">
+              <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight text-white drop-shadow-lg font-futuristic">
+                DIY RAG BOT
+              </h1>
+              <p className="text-zinc-400 mb-4 text-lg">Build Your own bot-No code</p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <button
+                onClick={logout}
+                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
 
           {/* View Toggle */}
           <div className="flex justify-center gap-2 mb-6">
