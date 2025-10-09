@@ -440,9 +440,9 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                     You
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-zinc-300 font-medium mb-1">You</div>
-                    <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
+                    <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white break-words">
                       {msg.user}
                     </div>
                   </div>
@@ -452,7 +452,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                   <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                     Bot
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-zinc-300 font-medium mb-1">{bot.name}</div>
                     <div className="bg-zinc-800/50 rounded-lg px-4 py-3 text-white">
                       {msg.bot === '...' ? (
@@ -461,25 +461,27 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                           Thinking...
                         </div>
                       ) : (
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code: ({ className, children, ...props}) => (
-                              <code className={`bg-black/30 px-1.5 py-0.5 rounded ${className || ""}`} {...props}>
-                                {children}
-                              </code>
-                            ),
-                            pre: ({children}) => (
-                              <pre className="bg-black/30 p-3 rounded overflow-x-auto">{children}</pre>
-                            ),
-                            ul: ({children}) => <ul className="list-disc pl-6 space-y-1">{children}</ul>,
-                            ol: ({children}) => <ol className="list-decimal pl-6 space-y-1">{children}</ol>,
-                            a: ({children, ...props}) => <a className="text-blue-400 underline" {...props}>{children}</a>,
-                            p: ({children}) => <p className="mb-2">{children}</p>,
-                          }}
-                        >
-                          {msg.bot}
-                        </ReactMarkdown>
+                        <div className="prose prose-invert max-w-none break-words">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              code: ({ className, children, ...props}) => (
+                                <code className={`bg-black/30 px-1.5 py-0.5 rounded ${className || ""}`} {...props}>
+                                  {children}
+                                </code>
+                              ),
+                              pre: ({children}) => (
+                                <pre className="bg-black/30 p-3 rounded whitespace-pre-wrap">{children}</pre>
+                              ),
+                              ul: ({children}) => <ul className="list-disc pl-6 space-y-1">{children}</ul>,
+                              ol: ({children}) => <ol className="list-decimal pl-6 space-y-1">{children}</ol>,
+                              a: ({children, ...props}) => <a className="text-blue-400 underline" {...props}>{children}</a>,
+                              p: ({children}) => <p className="mb-2">{children}</p>,
+                            }}
+                          >
+                            {msg.bot}
+                          </ReactMarkdown>
+                        </div>
                       )}
                     </div>
                     {/* Source citations */}
@@ -489,9 +491,9 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                         <div className="space-y-2">
                           {msg.sources.map((source, idx) => (
                             <div key={idx} className="bg-zinc-800/30 rounded p-2">
-                              <div className="flex gap-2 text-xs text-zinc-400 mb-1">
+                              <div className="flex flex-wrap gap-2 text-xs text-zinc-400 mb-1">
                                 <span className="font-medium">Source:</span>
-                                <span>{source.metadata.source}</span>
+                                <span className="break-all">{source.metadata.source}</span>
                                 {source.metadata.page && (
                                   <>
                                     <span>•</span>
@@ -501,7 +503,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                                 <span>•</span>
                                 <span>Chunk {source.metadata.chunk_index}</span>
                               </div>
-                              <div className="text-zinc-300 text-sm line-clamp-2">
+                              <div className="text-zinc-300 text-sm break-words line-clamp-2">
                                 {source.content}
                               </div>
                             </div>

@@ -136,8 +136,30 @@ class BotManager:
 
         # Remove vectorstore directory if it exists
         if os.path.exists(bot.vectorstore_path):
-            import shutil
-            shutil.rmtree(bot.vectorstore_path)
+            try:
+                # First try to close any open Chroma connections
+                import chromadb
+                try:
+                    client = chromadb.PersistentClient(path=bot.vectorstore_path)
+                    client.reset()  # This closes connections
+                except Exception as e:
+                    print(f"Warning: Could not reset Chroma client: {e}")
+                
+                # Force Python garbage collection
+                import gc
+                gc.collect()
+                
+                # Wait a moment for resources to be freed
+                import time
+                time.sleep(1)
+                
+                # Now try to remove the directory
+                import shutil
+                shutil.rmtree(bot.vectorstore_path, ignore_errors=True)
+            except Exception as e:
+                print(f"Warning: Could not fully remove vectorstore: {e}")
+                # Continue with bot deletion even if vectorstore deletion fails
+                pass
 
         del self.bots[bot_id]
         self.save_bots()
