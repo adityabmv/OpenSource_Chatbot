@@ -19,9 +19,20 @@ def load_or_create_vectorstore(embeddings, collection_name="rag_db", persist_dir
         return Chroma(client=client, collection_name=collection_name, embedding_function=embeddings)
 
 def append_to_vectorstore(chunks, embeddings, collection_name="rag_db", persist_directory="vector_db"):
-    """Append chunks to a bot's vectorstore"""
+    """Append chunks to a bot's vectorstore
+    
+    Args:
+        chunks (list): List of dictionaries containing text and metadata
+        embeddings: Embedding model
+        collection_name (str): Name of the collection
+        persist_directory (str): Directory to persist the vectorstore
+    """
     vectorstore = load_or_create_vectorstore(embeddings, collection_name, persist_directory)
-    vectorstore.add_texts(chunks)
+    
+    texts = [chunk["text"] for chunk in chunks]
+    metadatas = [chunk["metadata"] for chunk in chunks]
+    
+    vectorstore.add_texts(texts=texts, metadatas=metadatas)
     return vectorstore
 
 def query_vectorstore(vectorstore, query, top_k=5):
