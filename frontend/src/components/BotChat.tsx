@@ -30,7 +30,8 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
     }>
   }>>([]);
   const [loading, setLoading] = useState(false);
-  const [llmModel, setLlmModel] = useState('qwen3:1.7b');
+  const [llmModel, setLlmModel] = useState('deepseek/deepseek-r1-0528-qwen3-8b:free');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [llmInstruction, setLlmInstruction] = useState('Answer in concise Markdown. Use bullet points when listing; cite brief sources when relevant.');
   const [topK, setTopK] = useState(5);
 
@@ -55,10 +56,20 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(true);
 
-  // Load bot stats on component mount
+  // Load bot stats and available models on component mount
   useEffect(() => {
     loadBotStats();
+    loadAvailableModels();
   }, [bot.id]);
+
+  const loadAvailableModels = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/models/available`);
+      setAvailableModels(response.data.models);
+    } catch (error) {
+      console.error('Failed to load available models:', error);
+    }
+  };
 
   const loadBotStats = async () => {
     try {
@@ -508,10 +519,11 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                   onChange={(e) => setLlmModel(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="qwen3:1.7b">qwen3:1.7b (1.4 GB) - Fast & efficient</option>
-                  <option value="tinyllama:latest">tinyllama:latest (637 MB) - Ultra-fast</option>
-                  <option value="mistral:7b-instruct-q4_K_M">mistral:7b-instruct-q4_K_M (4.4 GB) - Most capable</option>
-                  <option value="phi:latest">phi:latest (1.6 GB) - Great for reasoning</option>
+                  {availableModels.map(model => (
+                    <option key={model} value={model}>
+                      {model.replace('/', ' - ')} {/* Format model name for display */}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
