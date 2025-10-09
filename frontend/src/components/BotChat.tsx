@@ -7,26 +7,7 @@ import { useDropzone } from 'react-dropzone';
 import ChatHistory from './ChatHistory.tsx';
 import { API_BASE } from '../config.ts';
 
-interface Bot {
-  id: string;
-  name: string;
-  description: string;
-  chunk_size: number;
-  chunk_overlap: number;
-  embedding_model: string;
-  ocr_lang: string;
-  created_at: string;
-  updated_at: string;
-  vectorstore_path: string;
-  is_active: boolean;
-}
-
-interface BotStats {
-  num_chunks: number;
-  vectorstore_exists: boolean;
-  vectorstore_size_mb: number;
-  num_files: number;
-}
+import { Bot, BotStats } from '../types/bot';
 
 interface BotChatProps {
   bot: Bot;
