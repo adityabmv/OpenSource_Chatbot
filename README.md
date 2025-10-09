@@ -83,6 +83,34 @@ ollama pull tinyllama:latest
 # Optional: ollama pull mistral:7b-instruct-q4_K_M
 ```
 
+6. **Download Tesseract language data** (required for OCR support)
+```bash
+# Create tessdata directory in backend folder
+cd backend
+mkdir tessdata
+
+# Download language data files from tessdata repository
+# Replace <lang> with language code (e.g., eng, hin, tel, tam, etc.)
+curl -o tessdata/<lang>.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/<lang>.traineddata
+
+# Common Indian languages and their codes:
+# eng - English
+# hin - Hindi
+# tel - Telugu
+# tam - Tamil
+# ben - Bengali
+# guj - Gujarati
+# kan - Kannada
+# mal - Malayalam
+# mar - Marathi
+# pan - Punjabi
+# ori - Odia
+
+# Example: Download English and Hindi
+curl -o tessdata/eng.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata
+curl -o tessdata/hin.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/hin.traineddata
+```
+
 ### Run the Application
 
 1. **Start the Backend**
