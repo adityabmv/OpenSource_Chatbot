@@ -3,28 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config.ts';
 
-interface Bot {
-  id: string;
-  name: string;
-  description: string;
-  embedding_model: string;
-  ocr_lang: string;
-  created_at: string;
-  updated_at: string;
-  vectorstore_path: string;
-  is_active: boolean;
-}
-
-interface BotStats {
-  num_chunks: number;
-  vectorstore_exists: boolean;
-  vectorstore_size_mb: number;
-  num_files: number;
-}
-
-interface BotWithStats extends Bot {
-  stats?: BotStats;
-}
+import { Bot, BotStats, BotWithStats } from '../types/bot';
 
 const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSelect }) => {
   const [bots, setBots] = useState<BotWithStats[]>([]);
