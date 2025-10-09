@@ -6,29 +6,20 @@ import BotChat from "./components/BotChat.tsx";
 import { useDropzone } from "react-dropzone";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useAuth } from "./auth/AuthContext.tsx";
+import { Login } from "./components/Login.tsx";
 
 const API_BASE = "http://localhost:8000"; // Change if backend runs elsewhere
 
-interface Bot {
-  id: string;
-  name: string;
-  description: string;
-  chunk_size: number;
-  chunk_overlap: number;
-  embedding_model: string;
-  ocr_lang: string;
-  created_at: string;
-  updated_at: string;
-  vectorstore_path: string;
-  is_active: boolean;
-}
+import { Bot } from './types/bot';
 
 type ViewMode = 'dashboard' | 'chat' | 'legacy';
 
 function App() {
+  const { user, loading: authLoading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
   const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
-
+  
   // Legacy state (kept for backward compatibility)
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -45,6 +36,33 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [buildStatus, setBuildStatus] = useState<'idle' | 'building' | 'success' | 'error'>('idle');
   const [buildError, setBuildError] = useState<string>('');
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: (acceptedFiles) => {
+      setFiles(acceptedFiles);
+    },
+    accept: {
+      "application/pdf": [".pdf"],
+      "text/csv": [".csv"],
+      "application/json": [".json"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "text/plain": [".txt"]
+    },
+    multiple: true,
+  });
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   const handleBotSelect = (bot: Bot) => {
     setSelectedBot(bot);
@@ -101,20 +119,7 @@ function App() {
     }
   };
 
-  const onDrop = (acceptedFiles: File[]) => setFiles(acceptedFiles);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "application/pdf": [".pdf"],
-      "text/csv": [".csv"],
-      "application/json": [".json"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
-      "text/plain": [".txt"]
-    },
-    multiple: true,
-  });
+  // onDrop handler is defined in useDropzone configuration above
 
   const uploadFiles = async () => {
     if (!selectedBot) {
