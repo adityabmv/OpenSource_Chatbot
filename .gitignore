@@ -34,6 +34,18 @@ temp.pdf
 *.bak
 
 # =====================
+# Vector Database Files
+# =====================
+vector_db*/
+backend/vector_db*/
+*.bin
+chroma.sqlite3
+data_level0.bin
+header.bin
+length.bin
+link_lists.bin
+
+# =====================
 # OS / Editor
 # =====================
 .DS_Store
