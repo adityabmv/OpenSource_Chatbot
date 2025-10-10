@@ -51,7 +51,33 @@
       "updated_at": "2025-10-09 17:48:24.882562",
       "vectorstore_path": "vector_db_d3ff4edd-88f8-4479-87e5-a42819db1d8c",
       "is_active": true
+    },
+    {
+      "id": "3d9f6aa2-c1ad-4830-a5ab-2c3ef985a90a",
+      "name": "Test Bot",
+      "description": "Created via curl",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-10 15:43:31.583890",
+      "updated_at": "2025-10-10 15:43:31.583890",
+      "vectorstore_path": "vector_db_3d9f6aa2-c1ad-4830-a5ab-2c3ef985a90a",
+      "is_active": true
+    },
+    {
+      "id": "97570c9e-4e78-4a60-a041-55f6870c8892",
+      "name": "Test Bot",
+      "description": "Created via Postman",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-10 15:53:59.418462",
+      "updated_at": "2025-10-10 15:53:59.418462",
+      "vectorstore_path": "vector_db_97570c9e-4e78-4a60-a041-55f6870c8892",
+      "is_active": true
     }
   ],
-  "last_updated": "2025-10-09T17:48:24.887312"
+  "last_updated": "2025-10-10T15:53:59.419465"
 }

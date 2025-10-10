@@ -25,6 +25,14 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   loadBots();
   }, []);
 
+  const testResponseFormat = (response: any) => {
+    if (!response || typeof response !== 'object' || !Array.isArray(response.data?.bots)) {
+      console.error('Unexpected response format:', response);
+      return false;
+    }
+    return true;
+  };
+
   const loadBots = async () => {
     console.log("loadBots called");
     try {
@@ -32,6 +40,9 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
       console.log("Sending GET request to", `${API_BASE}/bots/active/`);
       const response = await axios.get(`${API_BASE}/bots/active/`);
       console.log("Received response:", response);
+      if (!testResponseFormat(response)) {
+        throw new Error('Invalid response format');
+      }
       const botsData = response.data.bots;
 
       // Load stats for each bot
@@ -208,7 +219,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
         </div>
       ) : (
         <div className="grid gap-4">
-          {bots.map((bot) => (
+          {(Array.isArray(bots) ? bots : []).map((bot) => (
             <div key={bot.id} className="bg-zinc-900/50 rounded-lg border border-zinc-700 p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
