@@ -43,6 +43,26 @@
           "timestamp": "2025-10-08T18:59:02.303088"
         }
       ]
+    },
+    {
+      "id": "conv_20251009_165014_ef6acb92",
+      "title": "My onion is wilting what do i do?",
+      "created_at": "2025-10-09T16:50:14.665976",
+      "updated_at": "2025-10-09T16:50:53.705713",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "My onion is wilting what do i do?",
+          "timestamp": "2025-10-09T16:50:53.675009"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "\n* The most common cause of wilted onions is overcooking, lack of air circulation, or exposure to heat.\n* To prevent onions from wilting:\n\t+ Keep them in a cool, dry place with good air circulation.\n\t+ Avoid storing them near heat sources or fruits that produce ethylene gas, which can cause onions to ripen too quickly.\n\t+ Don't cut off the top of an onion or expose it to air until you are ready to use it.\n* If your onions are already wilted:\n\t+ Rinse them under cold water and pat dry with a paper towel.\n\t+ Store them in an airtight container in the refrigerator. They may not regain their original texture, but they can still be used for cooking.",
+          "timestamp": "2025-10-09T16:50:53.705713"
+        }
+      ]
     }
   ]
 }

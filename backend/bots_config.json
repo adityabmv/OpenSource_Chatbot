@@ -1,31 +1,57 @@
 {
   "bots": [
     {
-      "id": "f0a57811-3ccd-42d7-ade9-8fa36b751709",
-      "name": "x",
-      "description": "x",
+      "id": "eeebbb60-e9eb-4250-be5c-affe0809fba8",
+      "name": "CSR",
+      "description": "Corporate Social Responsibility",
       "chunk_size": 500,
       "chunk_overlap": 50,
       "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
       "ocr_lang": "eng",
-      "created_at": "2025-10-08 18:43:03.665933",
-      "updated_at": "2025-10-08 18:43:03.665933",
-      "vectorstore_path": "vector_db_f0a57811-3ccd-42d7-ade9-8fa36b751709",
+      "created_at": "2025-10-09 16:14:08.162019",
+      "updated_at": "2025-10-09 16:14:08.162019",
+      "vectorstore_path": "vector_db_eeebbb60-e9eb-4250-be5c-affe0809fba8",
       "is_active": true
     },
     {
-      "id": "d3b1ec51-75c1-44ff-9ce0-6ce4f02304da",
-      "name": "kk",
-      "description": "ll",
+      "id": "a11f4ffb-702f-4faa-966c-41f153125069",
+      "name": "Telugu-Andhra-Flowers",
+      "description": "",
       "chunk_size": 500,
       "chunk_overlap": 50,
       "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
       "ocr_lang": "tel",
-      "created_at": "2025-10-08 18:49:15.671964",
-      "updated_at": "2025-10-08 18:49:15.671964",
-      "vectorstore_path": "vector_db_d3b1ec51-75c1-44ff-9ce0-6ce4f02304da",
+      "created_at": "2025-10-09 16:51:56.570045",
+      "updated_at": "2025-10-09 16:51:56.570045",
+      "vectorstore_path": "vector_db_a11f4ffb-702f-4faa-966c-41f153125069",
+      "is_active": true
+    },
+    {
+      "id": "29124044-7fa6-478f-a653-60ab940d0310",
+      "name": "telugu-Mango",
+      "description": "",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "tel",
+      "created_at": "2025-10-09 17:13:28.845889",
+      "updated_at": "2025-10-09 17:13:28.845889",
+      "vectorstore_path": "vector_db_29124044-7fa6-478f-a653-60ab940d0310",
+      "is_active": true
+    },
+    {
+      "id": "d3ff4edd-88f8-4479-87e5-a42819db1d8c",
+      "name": "Sanskrit",
+      "description": "aaa",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "hin",
+      "created_at": "2025-10-09 17:48:24.882562",
+      "updated_at": "2025-10-09 17:48:24.882562",
+      "vectorstore_path": "vector_db_d3ff4edd-88f8-4479-87e5-a42819db1d8c",
       "is_active": true
     }
   ],
-  "last_updated": "2025-10-08T18:49:15.673976"
+  "last_updated": "2025-10-09T17:48:24.887312"
 }
