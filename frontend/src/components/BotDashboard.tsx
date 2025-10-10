@@ -236,32 +236,13 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
                   <div className="text-zinc-400">OCR Language</div>
                   <div className="text-white font-medium">{bot.ocr_lang.toUpperCase()}</div>
                 </div>
-              </div>
-
-              {bot.stats && (
-                <div className="mt-4 pt-4 border-t border-zinc-700">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="text-zinc-400">Chunks</div>
-                      <div className="text-white font-medium">{bot.stats.num_chunks}</div>
-                    </div>
-                    <div>
-                      <div className="text-zinc-400">Vectorstore Size</div>
-                      <div className="text-white font-medium">{bot.stats.vectorstore_size_mb} MB</div>
-                    </div>
-                    <div>
-                      <div className="text-zinc-400">Files</div>
-                      <div className="text-white font-medium">{bot.stats.num_files}</div>
-                    </div>
-                    <div>
-                      <div className="text-zinc-400">Status</div>
-                      <div className={`font-medium ${bot.stats.vectorstore_exists ? 'text-green-400' : 'text-yellow-400'}`}>
-                        {bot.stats.vectorstore_exists ? 'Ready' : 'Not Built'}
-                      </div>
-                    </div>
+                <div>
+                  <div className="text-zinc-400">Database</div>
+                  <div className={`font-medium ${bot.stats && bot.stats.vectorstore_exists ? 'text-green-400' : 'text-yellow-400'}`}>
+                    {bot.stats && bot.stats.vectorstore_exists ? 'Ready' : 'No Database'}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

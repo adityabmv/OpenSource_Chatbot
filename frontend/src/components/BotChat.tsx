@@ -233,15 +233,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-            <div>
-              <div className="text-zinc-400">Chunk Size</div>
-              <div className="text-white font-medium">Default</div>
-            </div>
-            <div>
-              <div className="text-zinc-400">Chunk Overlap</div>
-              <div className="text-white font-medium">Default</div>
-            </div>
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
             <div>
               <div className="text-zinc-400">Embedding Model</div>
               <div className="text-white font-medium text-xs">Default</div>
@@ -250,34 +242,13 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
               <div className="text-zinc-400">OCR Language</div>
               <div className="text-white font-medium">{bot.ocr_lang.toUpperCase()}</div>
             </div>
-          </div>
-
-          {/* Current Database Stats */}
-          {botStats && (
-            <div className="bg-zinc-800/50 rounded-lg p-4 mb-4">
-              <h4 className="text-sm font-semibold text-zinc-300 mb-2">Current Database Status</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <div className="text-zinc-400">Chunks</div>
-                  <div className="text-white font-medium">{botStats.num_chunks}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400">Size</div>
-                  <div className="text-white font-medium">{botStats.vectorstore_size_mb} MB</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400">Files</div>
-                  <div className="text-white font-medium">{botStats.num_files}</div>
-                </div>
-                <div>
-                  <div className="text-zinc-400">Status</div>
-                  <div className={`font-medium ${botStats.vectorstore_exists ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {botStats.vectorstore_exists ? 'Built' : 'Empty'}
-                  </div>
-                </div>
+            <div>
+              <div className="text-zinc-400">Database</div>
+              <div className={`font-medium ${botStats && botStats.vectorstore_exists ? 'text-green-400' : 'text-yellow-400'}`}>
+                {botStats && botStats.vectorstore_exists ? 'Ready' : 'No Database'}
               </div>
             </div>
-          )}
+          </div>
 
           {/* File Upload Toggle */}
           <div className="mt-4 pt-4 border-t border-zinc-700">
