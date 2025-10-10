@@ -56,7 +56,6 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(true);
 
-  // Load bot stats and available models on component mount
   useEffect(() => {
     loadBotStats();
     loadAvailableModels();
