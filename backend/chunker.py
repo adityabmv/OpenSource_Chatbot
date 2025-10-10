@@ -1,10 +1,14 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
+from nltk_processor import NLTKProcessor
+
+# Initialize NLTK processor
+nltk_proc = NLTKProcessor()
 
 def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
     """
     Splits text into chunks with specified size and overlap.
-    Uses recursive splitting on multiple separators for more semantic chunks.
+    Uses NLTK for preprocessing and RecursiveCharacterTextSplitter for chunking.
     
     Args:
         text (str): The text to split into chunks
@@ -36,9 +40,15 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
         is_separator_regex=False
     )
     
-    # Clean and normalize text
-    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces
-    chunks = splitter.split_text(text)
+    # Preprocess text using NLTK
+    processed_text = nltk_proc.preprocess_text(text)
+    chunks = splitter.split_text(processed_text)
+    
+    # Extract key phrases for each chunk
+    chunk_phrases = [
+        nltk_proc.extract_key_phrases(chunk) 
+        for chunk in chunks
+    ]
     
     # Add metadata to each chunk
     metadata = metadata or {}
@@ -47,7 +57,8 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
         chunk_metadata = {
             **metadata,
             "chunk_index": i,
-            "total_chunks": len(chunks)
+            "total_chunks": len(chunks),
+            "key_phrases": chunk_phrases[i]
         }
         chunk_documents.append({
             "text": chunk.strip(),
