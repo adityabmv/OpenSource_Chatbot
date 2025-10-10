@@ -288,19 +288,51 @@ async def build_bot_with_preview(
 @app.post("/bots/{bot_id}/query/")
 async def query_bot_rag(bot_id: str, request: QueryRequest):
     """Query a specific bot"""
-    bot = bot_manager.get_bot(bot_id)
-    if not bot:
-        raise HTTPException(status_code=404, detail="Bot not found")
-
-    embeddings_model = get_embeddings_model(model_name=bot.embedding_model)
-    vectorstore = get_bot_vectorstore(bot, embeddings_model)
-
-    if not vectorstore:
-        raise HTTPException(status_code=400, detail="Bot vectorstore not found. Please build the database first.")
-
     try:
-        chunk_results = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
-        # Extract just the content for the LLM context
+        # Validate request data
+        if not request.prompt or not request.prompt.strip():
+            raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+        
+        if request.top_k < 1 or request.top_k > 20:
+            raise HTTPException(status_code=400, detail="top_k must be between 1 and 20")
+        
+        # Validate model
+        available_models = llm_client.get_available_models()
+        if request.llm_model not in available_models:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid model '{request.llm_model}'. Available models: {', '.join(available_models)}"
+            )
+        
+        # Get bot configuration
+        bot = bot_manager.get_bot(bot_id)
+        if not bot:
+            raise HTTPException(status_code=404, detail="Bot not found")
+
+        # Initialize embeddings and vectorstore
+        try:
+            embeddings_model = get_embeddings_model(model_name=bot.embedding_model)
+        except Exception as e:
+            print(f"Error initializing embeddings for bot {bot_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error initializing embeddings: {str(e)}")
+
+        try:
+            vectorstore = get_bot_vectorstore(bot, embeddings_model)
+        except Exception as e:
+            print(f"Error loading vectorstore for bot {bot_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error loading vectorstore: {str(e)}")
+
+        if not vectorstore:
+            raise HTTPException(status_code=400, detail="Bot vectorstore not found. Please build the database first.")
+
+        # Query vectorstore
+        try:
+            chunk_results = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
+        except Exception as e:
+            print(f"Vectorstore query error for bot {bot_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error querying vectorstore: {str(e)}")
+
+        # Build context and prompt
         context = " ".join(chunk['content'] for chunk in chunk_results)
         llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
 
@@ -308,7 +340,13 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
             {"role": "system", "content": "Answer directly based on the given context. Be concise and accurate."},
             {"role": "user", "content": llm_prompt}
         ]
-        response = await llm_client.chat(messages, model=request.llm_model)
+
+        # Get LLM response
+        try:
+            response = await llm_client.chat(messages, model=request.llm_model)
+        except Exception as e:
+            print(f"LLM chat error for bot {bot_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error getting LLM response: {str(e)}")
 
         return {
             "answer": {
@@ -321,8 +359,14 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
             "bot_name": bot.name
         }
 
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error querying: {str(e)}")
+        print(f"Unexpected error in query_bot_rag for bot {bot_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 @app.get("/bots/{bot_id}/status/")
 async def bot_status(bot_id: str):

@@ -176,39 +176,47 @@ class BotManager:
             return {
                 'num_chunks': 0,
                 'vectorstore_exists': False,
-                'vectorstore_size_mb': 0
+                'vectorstore_size_mb': 0,
+                'num_files': 0
             }
 
-        # Calculate vectorstore size and count
+        # Calculate total size
         total_size = 0
-        num_files = 0
-
         for root, dirs, files in os.walk(vectorstore_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 total_size += os.path.getsize(file_path)
-                num_files += 1
 
-        # Try to get collection count if possible
-        num_chunks = 0
-        try:
-            from langchain_chroma import Chroma
-            from embeddings import get_embeddings_model
-
-            embeddings_model = get_embeddings_model()
-            vectorstore = Chroma(
-                collection_name="rag_db",
-                embedding_function=embeddings_model,
-                persist_directory=vectorstore_path
-            )
-            num_chunks = len(vectorstore._collection.get()["documents"])
-        except Exception:
-            # Fallback: estimate based on files
-            num_chunks = num_files
-
-        return {
-            'num_chunks': num_chunks,
+        # Initialize stats with defaults in case we can't get detailed stats
+        stats = {
+            'num_chunks': 0,
             'vectorstore_exists': True,
             'vectorstore_size_mb': round(total_size / (1024 * 1024), 2),
-            'num_files': num_files
+            'num_files': 0
         }
+
+        # Try to get collection stats
+        try:
+            import chromadb
+            client = chromadb.PersistentClient(path=vectorstore_path)
+            collection = client.get_collection("rag_db")
+            collection_data = collection.get()
+            
+            # Get number of chunks
+            if collection_data.get('ids'):
+                stats['num_chunks'] = len(collection_data['ids'])
+            
+            # Get source files from metadata
+            source_files = set()
+            if collection_data.get('metadatas'):
+                for meta in collection_data['metadatas']:
+                    if meta and 'file_name' in meta:
+                        source_files.add(meta['file_name'])
+                stats['num_files'] = len(source_files)
+
+        except Exception as e:
+            print(f"Error getting detailed stats: {e}")
+            # Already have basic stats set above, just return those
+            pass
+
+        return stats
