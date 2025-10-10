@@ -1,10 +1,20 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
 from nltk_processor import NLTKProcessor
-from langchain_community.vectorstores.utils import filter_complex_metadata
+# from langchain_community.vectorstores.utils import filter_complex_metadata
 
 # Initialize NLTK processor
 nltk_proc = NLTKProcessor()
+
+def make_simple_metadata(metadata):
+    simple = {}
+    for k, v in metadata.items():
+        if isinstance(v, (str, int, float, bool)) or v is None:
+            simple[k] = v
+        elif isinstance(v, list):
+            simple[k] = ", ".join(map(str, v))
+        # skip other types
+    return simple
 
 def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
     """
@@ -20,6 +30,15 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
     Returns:
         list: List of dictionaries containing chunk text and metadata
     """
+    if metadata is None:
+        metadata = {}
+    elif isinstance(metadata, str):
+        metadata = {"text": metadata}
+    elif isinstance(metadata, dict):
+        for key, value in metadata.items():
+            if isinstance(value, list):
+                metadata[key] = ", ".join(value)
+    
     # Define separators in order of preference
     separators = [
         "\n\n",     # Double newline (paragraphs)
@@ -52,7 +71,7 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
         print("Extracted phrases:", phrases)
         chunk_phrases.append(phrases)
     
-    # Filter complex metadata
-    filtered_metadata = filter_complex_metadata(metadata)
+    # Simplify metadata for vectorstore
+    simple_metadata = make_simple_metadata(metadata)
 
-    return [{"text": chunk, "metadata": filtered_metadata} for chunk in chunks]
+    return [{"text": chunk, "metadata": simple_metadata} for chunk in chunks]
