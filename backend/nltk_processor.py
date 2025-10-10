@@ -44,6 +44,7 @@ class NLTKProcessor:
             
             processed_sentences.append(' '.join(words))
             
+        print("Processed sentences:", processed_sentences)
         return ' '.join(processed_sentences)
     
     def extract_key_phrases(self, text, max_phrases=5):
@@ -61,7 +62,8 @@ class NLTKProcessor:
         
         # Get most common phrases
         key_phrases = freq_dist.most_common(max_phrases)
-        return [phrase[0] for phrase in key_phrases]
+        print("Key phrases:", key_phrases)
+        return ", ".join([phrase[0] for phrase in key_phrases])
     
     def get_sentence_importance(self, text):
         """

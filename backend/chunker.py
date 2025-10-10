@@ -1,6 +1,7 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
 from nltk_processor import NLTKProcessor
+from langchain_community.vectorstores.utils import filter_complex_metadata
 
 # Initialize NLTK processor
 nltk_proc = NLTKProcessor()
@@ -45,24 +46,13 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
     chunks = splitter.split_text(processed_text)
     
     # Extract key phrases for each chunk
-    chunk_phrases = [
-        nltk_proc.extract_key_phrases(chunk) 
-        for chunk in chunks
-    ]
+    chunk_phrases = []
+    for chunk in chunks:
+        phrases = nltk_proc.extract_key_phrases(chunk)
+        print("Extracted phrases:", phrases)
+        chunk_phrases.append(phrases)
     
-    # Add metadata to each chunk
-    metadata = metadata or {}
-    chunk_documents = []
-    for i, chunk in enumerate(chunks):
-        chunk_metadata = {
-            **metadata,
-            "chunk_index": i,
-            "total_chunks": len(chunks),
-            "key_phrases": chunk_phrases[i]
-        }
-        chunk_documents.append({
-            "text": chunk.strip(),
-            "metadata": chunk_metadata
-        })
-    
-    return chunk_documents
+    # Filter complex metadata
+    filtered_metadata = filter_complex_metadata(metadata)
+
+    return [{"text": chunk, "metadata": filtered_metadata} for chunk in chunks]
