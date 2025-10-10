@@ -21,22 +21,29 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   });
 
   useEffect(() => {
-    loadBots();
+  console.log("BotDashboard mounted: triggering loadBots()");
+  loadBots();
   }, []);
 
   const loadBots = async () => {
+    console.log("loadBots called");
     try {
       setLoading(true);
+      console.log("Sending GET request to", `${API_BASE}/bots/active/`);
       const response = await axios.get(`${API_BASE}/bots/active/`);
+      console.log("Received response:", response);
       const botsData = response.data.bots;
 
       // Load stats for each bot
       const botsWithStats = await Promise.all(
         botsData.map(async (bot: Bot) => {
           try {
+            console.log("Fetching stats for bot", bot.id);
             const statsResponse = await axios.get(`${API_BASE}/bots/${bot.id}/stats`);
+            console.log("Stats response for bot", bot.id, statsResponse);
             return { ...bot, stats: statsResponse.data.stats };
-          } catch {
+          } catch (statsErr) {
+            console.error("Error fetching stats for bot", bot.id, statsErr);
             return { ...bot, stats: { num_chunks: 0, vectorstore_exists: false, vectorstore_size_mb: 0, num_files: 0 } };
           }
         })
@@ -44,6 +51,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
 
       setBots(botsWithStats);
     } catch (err: any) {
+      console.error("Error in loadBots:", err);
       setError(err.response?.data?.detail || 'Failed to load bots');
     } finally {
       setLoading(false);

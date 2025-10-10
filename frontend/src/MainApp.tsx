@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import { useAuth } from "./auth/AuthContext.tsx";
 import { Login } from "./components/Login.tsx";
 
-const API_BASE = "http://localhost:8000"; // Change if backend runs elsewhere
+import { API_BASE } from './config.ts';
 
 import { Bot } from './types/bot';
 
