@@ -1,63 +1,41 @@
-# 🤖 Multi-Bot AI Chatbot System
+Multi-Bot AI Chatbot System
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![React](https://img.shields.io/badge/React-18.0+-61dafb.svg)](https://reactjs.org/)
-
-> **A powerful, scalable AI chatbot system that supports multiple specialized bots with individual knowledge bases, file processing, and intelligent conversations.**
-<img width="2006" height="1068" alt="image" src="https://github.com/user-attachments/assets/8dfdb3b9-2e54-49e9-af9e-0dd8343f54b4" />
-
-
-<img width="2181" height="1194" alt="image" src="https://github.com/user-attachments/assets/2f32f73e-b6c8-4d7a-814a-b8efe5d11a0d" />
-<img width="1797" height="844" alt="image" src="https://github.com/user-attachments/assets/3a9a4c65-0a18-45c5-9126-8d2da32424ad" />
-## 🌟 Features
-### 🤖 **Multi-Bot Architecture**
-- **Individual Bot Management**: Create and manage multiple specialized AI bots
-- **Isolated Knowledge Bases**: Each bot maintains its own vector database
-- **Bot-Specific Configurations**: Custom chunk sizes, embedding models, and OCR settings per bot
-- **Real-time Statistics**: Monitor each bot's database size, chunk count, and file processing status
-
-### 📁 **Advanced File Processing**
-- **Multi-format Support**: PDF, CSV, JSON, DOCX, PPTX, TXT files
-- **Intelligent OCR**: Extract text from images and scanned documents with multi-language support
-- **Smart Chunking**: Configurable text splitting with overlap for better context retention
-- **One-Click Processing**: Combined preprocessing and database building in a single operation
-
-### 💬 **Intelligent Chat System**
-- **Per-Bot Conversations**: Each bot has its own chat interface and context
-- **Multiple LLM Support**: Choose from various models (Qwen, TinyLlama, Mistral, Phi)
-- **Custom Instructions**: Tailor bot behavior for specific use cases
-- **Markdown Rendering**: Rich text responses with syntax highlighting
-- **Persistent Chat History**: Complete conversation memory with save/load functionality
-- **Conversation Management**: Create, load, and switch between multiple conversation threads
-
-### 🎨 **Modern UI/UX**
-- **Intuitive Dashboard**: Visual bot management with status indicators
-- **Responsive Design**: Works seamlessly on desktop and mobile
-- **Dark Theme**: Modern, eye-friendly interface
-- **Real-time Updates**: Live status updates and progress indicators
-
-## 🚀 Quick Start
+## Developer Installation Guide
 
 ### Prerequisites
+- Python 3.8+
+- Node.js 16+
 
-- **Python 3.8+**
-- **Node.js 16+**
-- **Ollama** (for local LLM inference)
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd os-chatbot
-```
-
-2. **Backend Setup**
+### Backend Setup
 ```bash
 cd backend
 python -m venv venv
-# On Windows:
+venv\Scripts\activate  # On Windows
+source venv/bin/activate  # On Mac/Linux
+pip install -r requirements.txt
+```
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### Running Backend
+```bash
+cd backend
+uvicorn app:app --reload
+```
+
+### Running Frontend
+```bash
+cd frontend
+npm start
+```
+
+---
+For development only. See code for details. Remove Docker and advanced deployment steps.
 venv\Scripts\activate
 # On macOS/Linux:
 source venv/bin/activate
