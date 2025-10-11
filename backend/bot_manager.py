@@ -18,7 +18,6 @@ class BotConfig(BaseModel):
     updated_at: datetime
     vectorstore_path: str
     is_active: bool = True
-    openrouter_api_key: str = ""
 
 class BotManager:
     def __init__(self, storage_path: str = "bots_config.json"):
@@ -78,7 +77,7 @@ class BotManager:
                     pass
             raise
 
-    def create_bot(self, name: str, description: str = "", openrouter_api_key: str = "", **kwargs) -> BotConfig:
+    def create_bot(self, name: str, description: str = "", **kwargs) -> BotConfig:
         """Create a new bot"""
         bot_id = str(uuid.uuid4())
         now = datetime.now()
@@ -96,7 +95,6 @@ class BotManager:
             vectorstore_path=vectorstore_path,
             created_at=now,
             updated_at=now,
-            openrouter_api_key=openrouter_api_key,
             **kwargs
         )
 
