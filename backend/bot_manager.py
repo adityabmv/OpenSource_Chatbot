@@ -18,6 +18,7 @@ class BotConfig(BaseModel):
     updated_at: datetime
     vectorstore_path: str
     is_active: bool = True
+    uid: str = ""
 
 class BotManager:
     def __init__(self, storage_path: str = "bots_config.json"):
@@ -32,6 +33,9 @@ class BotManager:
                 with open(self.storage_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     for bot_data in data.get('bots', []):
+                        # If old bots don't have uid, set to empty string
+                        if 'uid' not in bot_data:
+                            bot_data['uid'] = ""
                         bot = BotConfig(**bot_data)
                         self.bots[bot.id] = bot
             except Exception as e:
@@ -77,7 +81,7 @@ class BotManager:
                     pass
             raise
 
-    def create_bot(self, name: str, description: str = "", **kwargs) -> BotConfig:
+    def create_bot(self, name: str, description: str = "", uid: str = "", **kwargs) -> BotConfig:
         """Create a new bot"""
         bot_id = str(uuid.uuid4())
         now = datetime.now()
@@ -95,6 +99,7 @@ class BotManager:
             vectorstore_path=vectorstore_path,
             created_at=now,
             updated_at=now,
+            uid=uid,
             **kwargs
         )
 
@@ -106,12 +111,16 @@ class BotManager:
         """Get a bot by ID"""
         return self.bots.get(bot_id)
 
-    def get_all_bots(self) -> List[BotConfig]:
-        """Get all bots"""
+    def get_all_bots(self, uid: str = None) -> List[BotConfig]:
+        """Get all bots, optionally filtered by UID"""
+        if uid:
+            return [bot for bot in self.bots.values() if bot.uid == uid]
         return list(self.bots.values())
 
-    def get_active_bots(self) -> List[BotConfig]:
-        """Get all active bots"""
+    def get_active_bots(self, uid: str = None) -> List[BotConfig]:
+        """Get all active bots, optionally filtered by UID"""
+        if uid:
+            return [bot for bot in self.bots.values() if bot.is_active and bot.uid == uid]
         return [bot for bot in self.bots.values() if bot.is_active]
 
     def update_bot(self, bot_id: str, **updates) -> Optional[BotConfig]:
