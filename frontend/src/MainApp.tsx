@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import apiClient from "./api/client";
 import GlassCard from "./components/GlassCard.tsx";
 import BotDashboard from "./components/BotDashboard.tsx";
 import BotChat from "./components/BotChat.tsx";
@@ -77,7 +77,7 @@ function App() {
   // Legacy functions (for backward compatibility)
   const downloadDB = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/download_db/`, {
+      const res = await apiClient.get(`${API_BASE}/download_db/`, {
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -100,7 +100,7 @@ function App() {
 
     try {
       setBuildStatus('building');
-      const res = await axios.post(`${API_BASE}/process_and_recommend/`, formData, {
+      const res = await apiClient.post(`${API_BASE}/process_and_recommend/`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -135,7 +135,7 @@ function App() {
 
     try {
       setBuildStatus('building');
-      const res = await axios.post(
+      const res = await apiClient.post(
         `${API_BASE}/bots/${selectedBot.id}/build_db/?chunk_size=${chunkSize}&chunk_overlap=${chunkOverlap}&embedding_model=${embeddingModel}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
@@ -156,7 +156,7 @@ function App() {
     setLoading(true);
     setChat((c) => [...c, { user: prompt, bot: "..." }]);
     try {
-      const res = await axios.post(`${API_BASE}/query/`, {
+      const res = await apiClient.post(`${API_BASE}/query/`, {
         prompt: `${llmInstruction}\n\n${prompt}`,
         llm_model: llmModel,
         top_k: 5

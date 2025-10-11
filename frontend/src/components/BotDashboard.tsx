@@ -1,6 +1,6 @@
 // BotDashboard.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../api/client';
 import { API_BASE } from '../config.ts';
 import { Bot, BotStats, BotWithStats } from '../types/bot';
 
@@ -38,8 +38,10 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     console.log("loadBots called");
     try {
       setLoading(true);
-      console.log("Sending GET request to", `${API_BASE}/bots/`);
-      const response = await axios.get(`${API_BASE}/bots/`);
+      // Test with absolute ngrok URL instead of API_BASE
+      const testUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
+      console.log("Sending GET request to", testUrl);
+      const response = await apiClient.get(testUrl);
   console.log("Received response:", response);
   console.log("Received response.data:", response.data);
       if (!testResponseFormat(response)) {
@@ -52,7 +54,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
         botsData.map(async (bot: Bot) => {
           try {
             console.log("Fetching stats for bot", bot.id);
-            const statsResponse = await axios.get(`${API_BASE}/bots/${bot.id}/stats`);
+            const statsUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${bot.id}/stats`;
+            const statsResponse = await apiClient.get(statsUrl);
             console.log("Stats response for bot", bot.id, statsResponse);
             return { ...bot, stats: statsResponse.data.stats };
           } catch (statsErr) {
@@ -74,7 +77,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   const createBot = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE}/bots/`, newBot);
+      const createUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
+      await apiClient.post(createUrl, newBot);
       setShowCreateForm(false);
       setNewBot({
         name: '',
@@ -95,7 +99,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     }
 
     try {
-      await axios.delete(`${API_BASE}/bots/${botId}`);
+      const deleteUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${botId}`;
+      await apiClient.delete(deleteUrl);
       loadBots();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete bot');

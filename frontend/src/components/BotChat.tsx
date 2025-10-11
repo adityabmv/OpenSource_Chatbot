@@ -1,6 +1,6 @@
 // BotChat.tsx - Updated with Chat History
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../api/client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDropzone } from 'react-dropzone';
@@ -64,7 +64,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const loadBotStats = async () => {
     try {
       setLoadingStats(true);
-      const response = await axios.get(`${API_BASE}/bots/${bot.id}/status/`);
+      const response = await apiClient.get(`${API_BASE}/bots/${bot.id}/status/`);
       setBotStats(response.data);
     } catch (error) {
       console.error('Failed to load bot stats:', error);
@@ -81,7 +81,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
     setMessages(prev => [...prev, { user: userMessage, bot: '...', timestamp: new Date() }]);
 
     try {
-      const response = await axios.post(`${API_BASE}/bots/${bot.id}/query/`, {
+      const response = await apiClient.post(`${API_BASE}/bots/${bot.id}/query/`, {
         prompt: `${llmInstruction}\n\n${userMessage}`,
         llm_model: llmModel,
         top_k: topK,
@@ -104,11 +104,11 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
       // Save to chat history if we have a conversation ID
       if (currentConversationId) {
         try {
-          await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
+          await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
             role: 'user',
             content: userMessage
           });
-          await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
+          await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
             role: 'assistant',
             content: botResponse
           });
@@ -137,7 +137,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
   const handleNewConversation = async () => {
     try {
-      const response = await axios.post(`${API_BASE}/bots/${bot.id}/chat/conversations`);
+      const response = await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations`);
       setCurrentConversationId(response.data.conversation_id);
       setMessages([]);
     } catch (error) {
@@ -178,7 +178,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
     try {
       setBuildStatus('building');
-      const res = await axios.post(
+      const res = await apiClient.post(
         `${API_BASE}/bots/${bot.id}/build_and_preview/?chunk_size=${tempChunkSize}&chunk_overlap=50&embedding_model=sentence-transformers/all-MiniLM-L6-v2`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }

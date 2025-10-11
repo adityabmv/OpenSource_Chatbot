@@ -1,6 +1,6 @@
 // ChatHistory.tsx
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../api/client';
 import { API_BASE } from '../config.ts';
 
 interface Conversation {
@@ -41,7 +41,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/bots/${botId}/chat/conversations`);
+      const response = await apiClient.get(`${API_BASE}/bots/${botId}/chat/conversations`);
       setConversations(response.data.conversations || []);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -53,7 +53,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
 
   const handleLoadConversation = async (conversationId: string) => {
     try {
-      const response = await axios.get(`${API_BASE}/bots/${botId}/chat/conversations/${conversationId}`);
+      const response = await apiClient.get(`${API_BASE}/bots/${botId}/chat/conversations/${conversationId}`);
       const conversation = response.data.conversation;
 
       // Convert to messages format expected by BotChat
@@ -74,7 +74,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
 
     if (confirm('Are you sure you want to delete this conversation?')) {
       try {
-        await axios.delete(`${API_BASE}/bots/${botId}/chat/conversations/${conversationId}`);
+        await apiClient.delete(`${API_BASE}/bots/${botId}/chat/conversations/${conversationId}`);
         await loadConversations(); // Reload the list
       } catch (error) {
         console.error('Failed to delete conversation:', error);

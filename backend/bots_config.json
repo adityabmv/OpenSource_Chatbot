@@ -12,7 +12,20 @@
       "updated_at": "2025-10-11 16:15:54.019051",
       "vectorstore_path": "vector_db_AA_20251011",
       "is_active": true
+    },
+    {
+      "id": "8f451d88-d861-46f8-8a72-012d3482f98b",
+      "name": "a",
+      "description": "a",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-11 20:04:06.025162",
+      "updated_at": "2025-10-11 20:04:06.025162",
+      "vectorstore_path": "vector_db_a_20251011",
+      "is_active": true
     }
   ],
-  "last_updated": "2025-10-11T16:15:54.019051"
+  "last_updated": "2025-10-11T20:04:06.027174"
 }
