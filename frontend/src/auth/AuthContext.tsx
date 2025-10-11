@@ -4,6 +4,7 @@ import { auth } from '../firebase/config.ts';
 
 interface AuthContextType {
   user: User | null;
+  uid: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -13,12 +14,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Listen for auth state changes
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
+      setUid(user ? user.uid : null);
       setLoading(false);
     });
 
@@ -58,10 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const value = {
-    user,
-    loading,
-    signInWithGoogle,
-    logout,
+  user,
+  uid,
+  loading,
+  signInWithGoogle,
+  logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
