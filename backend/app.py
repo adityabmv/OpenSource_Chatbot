@@ -103,6 +103,7 @@ class BotCreateRequest(BaseModel):
     chunk_overlap: int = 50
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ocr_lang: str = "eng"
+    uid: str = ""
 
 class BotUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -127,22 +128,27 @@ async def create_bot(request: BotCreateRequest):
             chunk_size=request.chunk_size,
             chunk_overlap=request.chunk_overlap,
             embedding_model=request.embedding_model,
-            ocr_lang=request.ocr_lang
+            ocr_lang=request.ocr_lang,
+            uid=request.uid
         )
         return {"bot": bot.dict(), "message": "Bot created successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating bot: {str(e)}")
 
+from fastapi import Request
+
 @app.get("/bots/")
-async def list_bots():
-    """List all bots"""
-    bots = bot_manager.get_all_bots()
+async def list_bots(request: Request):
+    """List all bots for a user"""
+    uid = request.headers.get("x-user-uid", "")
+    bots = bot_manager.get_all_bots(uid=uid)
     return {"bots": [bot.dict() for bot in bots]}
 
 @app.get("/bots/active/")
-async def list_active_bots():
-    """List all active bots"""
-    bots = bot_manager.get_active_bots()
+async def list_active_bots(request: Request):
+    """List all active bots for a user"""
+    uid = request.headers.get("x-user-uid", "")
+    bots = bot_manager.get_active_bots(uid=uid)
     return {"bots": [bot.dict() for bot in bots]}
 
 @app.get("/bots/{bot_id}")
@@ -397,28 +403,33 @@ async def get_available_models():
 # =========================
 
 @app.post("/bots/{bot_id}/chat/conversations")
-async def create_conversation(bot_id: str):
-    """Create a new conversation"""
+async def create_conversation(bot_id: str, request: Request):
+    """Create a new conversation for a user"""
     try:
-        conversation_id = chat_manager.create_conversation(bot_id)
+        uid = request.headers.get("x-user-uid", "")
+        conversation_id = chat_manager.create_conversation(bot_id, uid=uid)
         return {"conversation_id": conversation_id, "message": "Conversation created"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating conversation: {str(e)}")
 
 @app.get("/bots/{bot_id}/chat/conversations")
-async def get_conversations(bot_id: str):
-    """Get all conversations for a bot"""
+@app.get("/bots/{bot_id}/chat/conversations")
+async def get_conversations(bot_id: str, request: Request):
+    """Get all conversations for a bot and user"""
     try:
-        conversations = chat_manager.get_conversations(bot_id)
+        uid = request.headers.get("x-user-uid", "")
+        conversations = chat_manager.get_conversations(bot_id, uid=uid)
         return {"conversations": conversations}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting conversations: {str(e)}")
 
 @app.get("/bots/{bot_id}/chat/conversations/{conversation_id}")
-async def get_conversation(bot_id: str, conversation_id: str):
-    """Get a specific conversation"""
+@app.get("/bots/{bot_id}/chat/conversations/{conversation_id}")
+async def get_conversation(bot_id: str, conversation_id: str, request: Request):
+    """Get a specific conversation for a user"""
     try:
-        conversation = chat_manager.get_conversation(bot_id, conversation_id)
+        uid = request.headers.get("x-user-uid", "")
+        conversation = chat_manager.get_conversation(bot_id, conversation_id, uid=uid)
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return {"conversation": conversation}
@@ -428,10 +439,12 @@ async def get_conversation(bot_id: str, conversation_id: str):
         raise HTTPException(status_code=500, detail=f"Error getting conversation: {str(e)}")
 
 @app.delete("/bots/{bot_id}/chat/conversations/{conversation_id}")
-async def delete_conversation(bot_id: str, conversation_id: str):
-    """Delete a conversation"""
+@app.delete("/bots/{bot_id}/chat/conversations/{conversation_id}")
+async def delete_conversation(bot_id: str, conversation_id: str, request: Request):
+    """Delete a conversation for a user"""
     try:
-        success = chat_manager.delete_conversation(bot_id, conversation_id)
+        uid = request.headers.get("x-user-uid", "")
+        success = chat_manager.delete_conversation(bot_id, conversation_id, uid=uid)
         if not success:
             raise HTTPException(status_code=404, detail="Conversation not found")
         return {"message": "Conversation deleted successfully"}
