@@ -39,38 +39,41 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
             if isinstance(value, list):
                 metadata[key] = ", ".join(value)
     
-    # Define separators in order of preference
-    separators = [
-        "\n\n",     # Double newline (paragraphs)
-        "\n",       # Single newline
-        ". ",       # Period followed by space
-        "? ",       # Question mark followed by space
-        "! ",       # Exclamation followed by space
-        ";",        # Semicolon
-        ",",        # Comma
-        " ",        # Space (last resort)
-        ""          # Character-level splitting if needed
-    ]
-    
-    splitter = RecursiveCharacterTextSplitter(
-        separators=separators,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        length_function=len,
-        is_separator_regex=False
-    )
-    
-    # Preprocess text using NLTK
-    processed_text = nltk_proc.preprocess_text(text)
-    chunks = splitter.split_text(processed_text)
-    
+    # Advanced semantic chunking
+    from nltk.tokenize import sent_tokenize
+    from sentence_transformers import SentenceTransformer
+    from sklearn.cluster import KMeans
+    import numpy as np
+
+    # Tokenize text into sentences
+    sentences = sent_tokenize(text)
+    if len(sentences) == 0:
+        return []
+
+    # Embed sentences
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    embeddings = model.encode(sentences)
+
+    # Determine number of clusters (chunks)
+    n_chunks = max(1, len(sentences) // (chunk_size // 10))  # Roughly chunk_size words per chunk
+    kmeans = KMeans(n_clusters=n_chunks, random_state=42, n_init=5)
+    labels = kmeans.fit_predict(embeddings)
+
+    # Group sentences by cluster label
+    clustered = {}
+    for label, sentence in zip(labels, sentences):
+        clustered.setdefault(label, []).append(sentence)
+
+    # Build chunks
+    chunks = [" ".join(clustered[label]) for label in sorted(clustered.keys())]
+
     # Extract key phrases for each chunk
     chunk_phrases = []
     for chunk in chunks:
         phrases = nltk_proc.extract_key_phrases(chunk)
         print("Extracted phrases:", phrases)
         chunk_phrases.append(phrases)
-    
+
     # Simplify metadata for vectorstore
     simple_metadata = make_simple_metadata(metadata)
 
