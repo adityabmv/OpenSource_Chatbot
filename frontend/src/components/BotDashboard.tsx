@@ -180,16 +180,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
                   <option value="openai/text-embedding-ada-002">OpenAI Ada-002</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">OpenRouter API Key</label>
-                <input
-                  type="text"
-                  value={newBot.openrouter_api_key || ''}
-                  onChange={(e) => setNewBot({...newBot, openrouter_api_key: e.target.value})}
-                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter OpenRouter API Key"
-                />
-              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
