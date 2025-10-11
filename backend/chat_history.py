@@ -26,7 +26,7 @@ class ChatHistoryManager:
             title += "..."
         return title
 
-    def create_conversation(self, bot_id: str) -> str:
+    def create_conversation(self, bot_id: str, uid: str = "") -> str:
         """Create a new conversation and return its ID"""
         conversation_id = self._generate_conversation_id()
         history_file = self._get_history_file(bot_id)
@@ -36,7 +36,8 @@ class ChatHistoryManager:
             "title": "New Conversation",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
-            "messages": []
+            "messages": [],
+            "uid": uid
         }
 
         # Load existing data or create new
@@ -94,8 +95,8 @@ class ChatHistoryManager:
         with open(history_file, 'w') as f:
             json.dump(data, f, indent=2)
 
-    def get_conversations(self, bot_id: str) -> List[Dict]:
-        """Get all conversations for a bot"""
+    def get_conversations(self, bot_id: str, uid: str = None) -> List[Dict]:
+        """Get all conversations for a bot, optionally filtered by UID"""
         history_file = self._get_history_file(bot_id)
 
         if not os.path.exists(history_file):
@@ -104,22 +105,26 @@ class ChatHistoryManager:
         with open(history_file, 'r') as f:
             data = json.load(f)
 
+        conversations = data.get("conversations", [])
         # Add message count to each conversation
-        for conv in data.get("conversations", []):
+        for conv in conversations:
             conv["message_count"] = len(conv.get("messages", []))
 
-        return data.get("conversations", [])
+        if uid:
+            conversations = [conv for conv in conversations if conv.get("uid", "") == uid]
 
-    def get_conversation(self, bot_id: str, conversation_id: str) -> Optional[Dict]:
-        """Get a specific conversation with messages"""
-        conversations = self.get_conversations(bot_id)
+        return conversations
+
+    def get_conversation(self, bot_id: str, conversation_id: str, uid: str = None) -> Optional[Dict]:
+        """Get a specific conversation with messages, optionally filtered by UID"""
+        conversations = self.get_conversations(bot_id, uid=uid)
         for conv in conversations:
             if conv["id"] == conversation_id:
                 return conv
         return None
 
-    def delete_conversation(self, bot_id: str, conversation_id: str) -> bool:
-        """Delete a conversation"""
+    def delete_conversation(self, bot_id: str, conversation_id: str, uid: str = None) -> bool:
+        """Delete a conversation, optionally filtered by UID"""
         history_file = self._get_history_file(bot_id)
 
         if not os.path.exists(history_file):
@@ -128,8 +133,11 @@ class ChatHistoryManager:
         with open(history_file, 'r') as f:
             data = json.load(f)
 
-        # Remove conversation
-        data["conversations"] = [conv for conv in data["conversations"] if conv["id"] != conversation_id]
+        # Remove conversation, only if UID matches (if provided)
+        if uid:
+            data["conversations"] = [conv for conv in data["conversations"] if not (conv["id"] == conversation_id and conv.get("uid", "") == uid)]
+        else:
+            data["conversations"] = [conv for conv in data["conversations"] if conv["id"] != conversation_id]
 
         with open(history_file, 'w') as f:
             json.dump(data, f, indent=2)
