@@ -54,6 +54,20 @@ Thumbs.db
 .idea/
 
 # =====================
+# Cursor Editor Files
+# =====================
+cursor/
+.cursor/
+**/.cursor/**
+**/cursor/**
+/cursor/**/*
+cursor/extension/**
+cursor.json
+.cursor.json
+*.cursor
+*.cursor.*
+
+# =====================
 # Misc
 # =====================
 *.egg-info/
