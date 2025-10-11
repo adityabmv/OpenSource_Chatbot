@@ -11,7 +11,7 @@ declare const process: any;
 
 // Get API base URL from environment variables or auto-detect
 // Always use ngrok URL for API calls
-export const API_BASE = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev';
+export const API_BASE = 'http://localhost:8000';
 
 export default {
   API_BASE,
