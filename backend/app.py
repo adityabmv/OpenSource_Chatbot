@@ -297,13 +297,7 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
         if request.top_k < 1 or request.top_k > 20:
             raise HTTPException(status_code=400, detail="top_k must be between 1 and 20")
         
-        # Validate model
-        available_models = llm_client.get_available_models()
-        if request.llm_model not in available_models:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid model '{request.llm_model}'. Available models: {', '.join(available_models)}"
-            )
+        # No model validation: allow any model name, let LLM provider handle errors
         
         # Get bot configuration
         bot = bot_manager.get_bot(bot_id)
@@ -395,8 +389,8 @@ async def bot_status(bot_id: str):
 
 @app.get("/models/available")
 async def get_available_models():
-    """Get list of available LLM models"""
-    return {"models": llm_client.get_available_models()}
+    """Get list of available LLM models (for reference only; any model name can be used)"""
+    return {"models": llm_client.get_available_models(), "note": "Any model name can be used; this list is for reference only."}
 
 # =========================
 # Chat History Endpoints
@@ -683,6 +677,7 @@ async def query_rag(request: QueryRequest):
         ]
 
         try:
+            # No model validation: allow any model name, let LLM provider handle errors
             response = await llm_client.chat(messages, model=request.llm_model)
         except Exception as e:
             print(f"LLM query error: {str(e)}")
