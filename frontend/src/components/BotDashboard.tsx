@@ -14,10 +14,11 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
 
   // Create bot form state
   const [newBot, setNewBot] = useState({
-    name: '',
-    description: '',
-    embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
-    ocr_lang: 'eng'
+  name: '',
+  description: '',
+  embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
+  ocr_lang: 'eng',
+  openrouter_api_key: ''
   });
 
   useEffect(() => {
@@ -79,7 +80,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
         name: '',
         description: '',
         embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
-        ocr_lang: 'eng'
+        ocr_lang: 'eng',
+        openrouter_api_key: ''
       });
       loadBots();
     } catch (err: any) {
@@ -165,7 +167,30 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
                 />
               </div>
             </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">Embedding Model</label>
+                <select
+                  value={newBot.embedding_model}
+                  onChange={(e) => setNewBot({...newBot, embedding_model: e.target.value})}
+                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="sentence-transformers/all-MiniLM-L6-v2">MiniLM-L6-v2</option>
+                  <option value="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2">Multilingual-MiniLM-L12-v2</option>
+                  <option value="openai/text-embedding-ada-002">OpenAI Ada-002</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">OpenRouter API Key</label>
+                <input
+                  type="text"
+                  value={newBot.openrouter_api_key || ''}
+                  onChange={(e) => setNewBot({...newBot, openrouter_api_key: e.target.value})}
+                  className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter OpenRouter API Key"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">OCR Language</label>
@@ -220,7 +245,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
         </div>
       ) : (
         <div className="grid gap-4">
-          {(Array.isArray(bots) ? bots : []).map((bot) => (
+          {bots.map((bot) => (
             <div key={bot.id} className="bg-zinc-900/50 rounded-lg border border-zinc-700 p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
@@ -246,7 +271,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
                   </button>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-zinc-400">Embedding Model</div>
