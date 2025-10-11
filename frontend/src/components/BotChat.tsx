@@ -15,6 +15,7 @@ interface BotChatProps {
 }
 
 const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
+  const [openRouterApiKey, setOpenRouterApiKey] = useState('');
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<Array<{
     user: string, 
@@ -94,7 +95,8 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
         prompt: `${llmInstruction}\n\n${userMessage}`,
         llm_model: llmModel,
         top_k: topK,
-        bot_id: bot.id
+        bot_id: bot.id,
+        openrouter_api_key: openRouterApiKey
       });
 
       const botResponse = response.data.answer.message.content;
@@ -481,7 +483,26 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
           {/* Controls */}
           <div className="p-6 border-t border-zinc-700 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">OpenRouter API Key</label>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={openRouterApiKey}
+                    onChange={e => setOpenRouterApiKey(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Paste your OpenRouter API key"
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 bg-zinc-700 hover:bg-zinc-800 text-white rounded-lg font-medium"
+                    onClick={() => setOpenRouterApiKey('')}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Model</label>
                 <select
