@@ -128,7 +128,9 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   };
 
   if (loading) {
-    return (
+    re    git add .
+    git commit -m "Deploy ngrok header fixes and latest code"
+    git push origin vercel-deploy
       <div className="w-full max-w-6xl mx-auto p-6">
         <div className="text-center text-zinc-400">Loading bots...</div>
       </div>
