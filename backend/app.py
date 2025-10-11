@@ -94,6 +94,7 @@ class QueryRequest(BaseModel):
     bot_id: Optional[str] = None
     conversation_id: Optional[str] = None
     message_id: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
 class BotCreateRequest(BaseModel):
     name: str
@@ -102,7 +103,6 @@ class BotCreateRequest(BaseModel):
     chunk_overlap: int = 50
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ocr_lang: str = "eng"
-    openrouter_api_key: str = ""
 
 class BotUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -127,8 +127,7 @@ async def create_bot(request: BotCreateRequest):
             chunk_size=request.chunk_size,
             chunk_overlap=request.chunk_overlap,
             embedding_model=request.embedding_model,
-            ocr_lang=request.ocr_lang,
-            openrouter_api_key=request.openrouter_api_key
+            ocr_lang=request.ocr_lang
         )
         return {"bot": bot.dict(), "message": "Bot created successfully"}
     except Exception as e:
@@ -345,8 +344,8 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
 
         # Get LLM response
         try:
-            # Use per-bot API key if present, else fallback to default
-            api_key = getattr(bot, "openrouter_api_key", None)
+            # Use API key from request if provided
+            api_key = request.openrouter_api_key
             response = await llm_client.chat(messages, model=request.llm_model, api_key_override=api_key)
         except Exception as e:
             print(f"LLM chat error for bot {bot_id}: {e}")
