@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+chat_history/
+vector_db_*/
+.env
