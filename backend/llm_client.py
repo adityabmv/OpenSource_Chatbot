@@ -63,11 +63,8 @@ class LLMClient:
         Returns:
             The response text from the model
         """
-        # Validate model
+        # No model validation: allow any model name, let OpenRouter API handle errors
         requested_model = model or self.default_model
-        available_models = self.get_available_models()
-        if requested_model not in available_models:
-            raise Exception(f"Invalid model '{requested_model}'. Available models: {', '.join(available_models)}")
         
         # Rate limiting check
         now = time.time()
