@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../config.ts';
-
 import { Bot, BotStats, BotWithStats } from '../types/bot';
+
 
 const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSelect }) => {
   const [bots, setBots] = useState<BotWithStats[]>([]);
@@ -37,9 +37,10 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     console.log("loadBots called");
     try {
       setLoading(true);
-      console.log("Sending GET request to", `${API_BASE}/bots/active/`);
-      const response = await axios.get(`${API_BASE}/bots/active/`);
-      console.log("Received response:", response);
+      console.log("Sending GET request to", `${API_BASE}/bots/`);
+      const response = await axios.get(`${API_BASE}/bots/`);
+  console.log("Received response:", response);
+  console.log("Received response.data:", response.data);
       if (!testResponseFormat(response)) {
         throw new Error('Invalid response format');
       }

@@ -10,27 +10,8 @@
 declare const process: any;
 
 // Get API base URL from environment variables or auto-detect
-const getApiBaseUrl = (): string => {
-  // Check for React environment variable (embedded at build time)
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
-  }
-
-  // Check for runtime config (for dynamic updates)
-  if (typeof window !== 'undefined' && (window as any).REACT_APP_API_URL) {
-    return (window as any).REACT_APP_API_URL;
-  }
-
-  // In development, use localhost
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:8000';
-  }
-
-  // Default fallback
-  return 'http://localhost:8000';
-};
-
-export const API_BASE = getApiBaseUrl();
+// Always use ngrok URL for API calls
+export const API_BASE = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev';
 
 export default {
   API_BASE,

@@ -81,7 +81,7 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://oschatbot-19c9e.web.app/"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
