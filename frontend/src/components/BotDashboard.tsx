@@ -1,5 +1,6 @@
 // BotDashboard.tsx
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../auth/AuthContext.tsx';
 import apiClient from '../api/client';
 import { API_BASE } from '../config.ts';
 import { Bot, BotStats, BotWithStats } from '../types/bot';
@@ -36,14 +37,15 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
 
   const loadBots = async () => {
     console.log("loadBots called");
+    const { uid } = useAuth();
     try {
       setLoading(true);
-      // Test with absolute ngrok URL instead of API_BASE
       const testUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
       console.log("Sending GET request to", testUrl);
       const response = await apiClient.get(testUrl, {
         headers: {
-          'ngrok-skip-browser-warning': 'true'
+          'ngrok-skip-browser-warning': 'true',
+          'x-user-uid': uid || ''
         }
       });
   console.log("Received response:", response);
@@ -61,7 +63,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
             const statsUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${bot.id}/stats`;
             const statsResponse = await apiClient.get(statsUrl, {
               headers: {
-                'ngrok-skip-browser-warning': 'true'
+                'ngrok-skip-browser-warning': 'true',
+                'x-user-uid': uid || ''
               }
             });
             console.log("Stats response for bot", bot.id, statsResponse);
@@ -84,11 +87,13 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
 
   const createBot = async (e: React.FormEvent) => {
     e.preventDefault();
+    const { uid } = useAuth();
     try {
       const createUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
-      await apiClient.post(createUrl, newBot, {
+      await apiClient.post(createUrl, { ...newBot, uid }, {
         headers: {
-          'ngrok-skip-browser-warning': 'true'
+          'ngrok-skip-browser-warning': 'true',
+          'x-user-uid': uid || ''
         }
       });
       setShowCreateForm(false);
@@ -110,11 +115,13 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
       return;
     }
 
+    const { uid } = useAuth();
     try {
       const deleteUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${botId}`;
       await apiClient.delete(deleteUrl, {
         headers: {
-          'ngrok-skip-browser-warning': 'true'
+          'ngrok-skip-browser-warning': 'true',
+          'x-user-uid': uid || ''
         }
       });
       loadBots();
