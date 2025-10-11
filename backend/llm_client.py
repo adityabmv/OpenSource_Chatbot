@@ -11,9 +11,6 @@ load_dotenv()
 class LLMClient:
     def __init__(self):
         self.api_key = os.getenv("OPENROUTER_API_KEY")
-        if not self.api_key:
-            raise ValueError("OPENROUTER_API_KEY not found in environment variables")
-        
         self.base_url = "https://openrouter.ai/api/v1"
         # Get model from env or use default, validate it's in available models
         env_model = os.getenv("DEFAULT_MODEL")
@@ -22,7 +19,7 @@ class LLMClient:
             "qwen/qwen3-coder",
             "deepseek/deepseek-chat-v3.1",
             "z-ai/glm-4.5-air",
-            "nvidia/nemotron-nano-9b-v2",
+            "google/gemma-3-4b-it:free",
             "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
             "mistralai/mistral-7b-instruct-4k"
         ]
@@ -79,7 +76,9 @@ class LLMClient:
             raise Exception("Rate limit exceeded. Please try again later.")
         self.requests.append(now)
 
-        api_key = api_key_override if api_key_override else self.api_key
+        api_key = api_key_override if api_key_override else None
+        if not api_key:
+            raise Exception("OpenRouter API key is required for chat requests.")
         headers = {
             "Authorization": f"Bearer {api_key}",
             "HTTP-Referer": "https://github.com/anrd30/OpenSource_Chatbot",  # Your repository
