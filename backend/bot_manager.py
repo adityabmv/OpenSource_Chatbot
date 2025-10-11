@@ -82,8 +82,11 @@ class BotManager:
         bot_id = str(uuid.uuid4())
         now = datetime.now()
 
-        # Create bot-specific vectorstore directory
-        vectorstore_path = f"vector_db_{bot_id}"
+        # Format date as YYYYMMDD
+        date_str = now.strftime('%Y%m%d')
+        # Sanitize bot name for filesystem (remove spaces, special chars)
+        safe_name = ''.join(c for c in name if c.isalnum() or c in ('_', '-')).replace(' ', '_')
+        vectorstore_path = f"vector_db_{safe_name}_{date_str}"
 
         bot = BotConfig(
             id=bot_id,
