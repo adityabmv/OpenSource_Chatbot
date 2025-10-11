@@ -32,7 +32,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   }>>([]);
   const [loading, setLoading] = useState(false);
   const [llmModel, setLlmModel] = useState('deepseek/deepseek-r1-0528-qwen3-8b:free');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
+    // Remove availableModels state
   const [llmInstruction, setLlmInstruction] = useState('Answer in concise Markdown. Use bullet points when listing; cite brief sources when relevant.');
   const [topK, setTopK] = useState(5);
 
@@ -59,17 +59,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
   useEffect(() => {
     loadBotStats();
-    loadAvailableModels();
   }, [bot.id]);
-
-  const loadAvailableModels = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/models/available`);
-      setAvailableModels(response.data.models);
-    } catch (error) {
-      console.error('Failed to load available models:', error);
-    }
-  };
 
   const loadBotStats = async () => {
     try {
@@ -505,17 +495,13 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">LLM Model</label>
-                <select
+                <input
+                  type="text"
                   value={llmModel}
-                  onChange={(e) => setLlmModel(e.target.value)}
+                  onChange={e => setLlmModel(e.target.value)}
                   className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {availableModels.map(model => (
-                    <option key={model} value={model}>
-                      {model.replace('/', ' - ')} {/* Format model name for display */}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Paste or type model name (e.g. deepseek/deepseek-r1-0528-qwen3-8b:free)"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-1">Top K Results</label>
