@@ -55,7 +55,7 @@ class LLMClient:
             print(f"API key validation failed: {e}")
             return False
 
-    async def chat(self, messages: List[Dict[str, str]], model: str = None) -> str:
+    async def chat(self, messages: List[Dict[str, str]], model: str = None, api_key_override: Optional[str] = None) -> str:
         """
         Send a chat request to OpenRouter API
         
@@ -79,8 +79,9 @@ class LLMClient:
             raise Exception("Rate limit exceeded. Please try again later.")
         self.requests.append(now)
 
+        api_key = api_key_override if api_key_override else self.api_key
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "HTTP-Referer": "https://github.com/anrd30/OpenSource_Chatbot",  # Your repository
             "X-Title": "OS_chatbot",  # Your application name
             "Content-Type": "application/json"
