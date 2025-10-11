@@ -41,7 +41,11 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
       // Test with absolute ngrok URL instead of API_BASE
       const testUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
       console.log("Sending GET request to", testUrl);
-      const response = await apiClient.get(testUrl);
+      const response = await apiClient.get(testUrl, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
   console.log("Received response:", response);
   console.log("Received response.data:", response.data);
       if (!testResponseFormat(response)) {
@@ -55,7 +59,11 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
           try {
             console.log("Fetching stats for bot", bot.id);
             const statsUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${bot.id}/stats`;
-            const statsResponse = await apiClient.get(statsUrl);
+            const statsResponse = await apiClient.get(statsUrl, {
+              headers: {
+                'ngrok-skip-browser-warning': 'true'
+              }
+            });
             console.log("Stats response for bot", bot.id, statsResponse);
             return { ...bot, stats: statsResponse.data.stats };
           } catch (statsErr) {
@@ -78,7 +86,11 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     e.preventDefault();
     try {
       const createUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
-      await apiClient.post(createUrl, newBot);
+      await apiClient.post(createUrl, newBot, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       setShowCreateForm(false);
       setNewBot({
         name: '',
@@ -100,7 +112,11 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
 
     try {
       const deleteUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${botId}`;
-      await apiClient.delete(deleteUrl);
+      await apiClient.delete(deleteUrl, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      });
       loadBots();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete bot');
