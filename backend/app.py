@@ -55,6 +55,7 @@ base_origins = [
     "http://127.0.0.1:3001",     # Alternative localhost port
     "https://localhost:3000",     # HTTPS localhost
     "https://127.0.0.1:3000",    # HTTPS localhost
+    "https://photosensitive-ollie-noncalculative.ngrok-free.dev"
 ]
 
 # Add frontend URLs from environment variable
@@ -101,6 +102,7 @@ class BotCreateRequest(BaseModel):
     chunk_overlap: int = 50
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ocr_lang: str = "eng"
+    openrouter_api_key: str = ""
 
 class BotUpdateRequest(BaseModel):
     name: Optional[str] = None
@@ -125,7 +127,8 @@ async def create_bot(request: BotCreateRequest):
             chunk_size=request.chunk_size,
             chunk_overlap=request.chunk_overlap,
             embedding_model=request.embedding_model,
-            ocr_lang=request.ocr_lang
+            ocr_lang=request.ocr_lang,
+            openrouter_api_key=request.openrouter_api_key
         )
         return {"bot": bot.dict(), "message": "Bot created successfully"}
     except Exception as e:
@@ -342,7 +345,9 @@ async def query_bot_rag(bot_id: str, request: QueryRequest):
 
         # Get LLM response
         try:
-            response = await llm_client.chat(messages, model=request.llm_model)
+            # Use per-bot API key if present, else fallback to default
+            api_key = getattr(bot, "openrouter_api_key", None)
+            response = await llm_client.chat(messages, model=request.llm_model, api_key_override=api_key)
         except Exception as e:
             print(f"LLM chat error for bot {bot_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Error getting LLM response: {str(e)}")
