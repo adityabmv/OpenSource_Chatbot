@@ -19,6 +19,7 @@ class BotConfig(BaseModel):
     vectorstore_path: str
     is_active: bool = True
     uid: str = ""
+    uploaded_files: List[Dict] = []  # Store uploaded file info: [{name, size, uploaded_at}]
 
 class BotManager:
     def __init__(self, storage_path: str = "bots_config.json"):
@@ -36,6 +37,9 @@ class BotManager:
                         # If old bots don't have uid, set to empty string
                         if 'uid' not in bot_data:
                             bot_data['uid'] = ""
+                        # If old bots don't have uploaded_files, set to empty list
+                        if 'uploaded_files' not in bot_data:
+                            bot_data['uploaded_files'] = []
                         bot = BotConfig(**bot_data)
                         self.bots[bot.id] = bot
             except Exception as e:
@@ -232,3 +236,33 @@ class BotManager:
             pass
 
         return stats
+
+    def add_uploaded_files(self, bot_id: str, files_info: List[Dict]):
+        """Add uploaded file information to a bot"""
+        bot = self.get_bot(bot_id)
+        if not bot:
+            return False
+        
+        # Add new files to the list
+        bot.uploaded_files.extend(files_info)
+        bot.updated_at = datetime.now()
+        self.save_bots()
+        return True
+
+    def clear_uploaded_files(self, bot_id: str):
+        """Clear all uploaded files for a bot (used when rebuilding database)"""
+        bot = self.get_bot(bot_id)
+        if not bot:
+            return False
+        
+        bot.uploaded_files = []
+        bot.updated_at = datetime.now()
+        self.save_bots()
+        return True
+
+    def get_uploaded_files(self, bot_id: str) -> List[Dict]:
+        """Get list of uploaded files for a bot"""
+        bot = self.get_bot(bot_id)
+        if not bot:
+            return []
+        return bot.uploaded_files

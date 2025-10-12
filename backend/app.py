@@ -190,6 +190,44 @@ async def get_bot_stats(bot_id: str):
         raise HTTPException(status_code=404, detail="Bot not found")
     return {"stats": stats}
 
+@app.get("/bots/{bot_id}/files")
+async def get_bot_files(bot_id: str):
+    """Get list of uploaded files for a bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    files = bot_manager.get_uploaded_files(bot_id)
+    return {"files": files, "total_files": len(files)}
+
+@app.post("/bots/{bot_id}/rebuild")
+async def rebuild_bot_database(bot_id: str):
+    """Clear all uploaded files and reset database for a bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    try:
+        # Clear uploaded files list
+        bot_manager.clear_uploaded_files(bot_id)
+        
+        # Delete vectorstore directory
+        vectorstore_path = bot.vectorstore_path
+        if os.path.exists(vectorstore_path):
+            shutil.rmtree(vectorstore_path)
+            print(f"Deleted vectorstore at {vectorstore_path}")
+        
+        return {
+            "status": "success",
+            "message": "Bot database cleared successfully. Upload new files to rebuild.",
+            "bot_id": bot_id
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[ERROR] rebuild_bot_database failed: {e}\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Error rebuilding database: {str(e)}")
+
 # =========================
 # Updated Endpoints for Bot Support
 # =========================
@@ -266,6 +304,19 @@ async def build_bot_with_preview(
             persist_directory=bot.vectorstore_path
         )
 
+        # Track uploaded files
+        files_info = []
+        for f in files:
+            if f.filename:
+                files_info.append({
+                    "name": f.filename,
+                    "size": f.size if hasattr(f, 'size') else 0,
+                    "uploaded_at": datetime.now().isoformat()
+                })
+        
+        # Add files to bot's uploaded files list
+        bot_manager.add_uploaded_files(bot_id, files_info)
+
         return {
             "status": "database built",
             "bot_id": bot_id,
@@ -279,8 +330,9 @@ async def build_bot_with_preview(
             },
             "preview": preview_lines,
             "total_text_size": sum(len(chunk["text"]) for chunk in chunks),
-            "files_processed": 1,  # Only count the actual source file
-            "source_files": [f.filename for f in files]  # List of original file names
+            "files_processed": len(files_info),
+            "source_files": [f["name"] for f in files_info],
+            "uploaded_files": files_info
         }
 
     except Exception as e:
@@ -482,415 +534,6 @@ async def update_conversation_title(bot_id: str, conversation_id: str, title: di
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating title: {str(e)}")
-
-# Keep legacy endpoints for backward compatibility (using default bot or first available)
-@app.post("/build_db/")
-async def build_db(
-    files: List[UploadFile] = File(...),
-    chunk_size: int = Form(500),
-    chunk_overlap: int = Form(50),
-    embedding_model: str = Form("sentence-transformers/all-MiniLM-L6-v2"),
-    ocr_lang: str = Form("eng"),
-    use_cached: bool = Form(False),
-):
-    """Legacy endpoint - creates a default bot if none exists"""
-    # Get or create default bot
-    bots = bot_manager.get_active_bots()
-    if not bots:
-        default_bot = bot_manager.create_bot(
-            name="Default Bot",
-            description="Default bot created for backward compatibility"
-        )
-        bot_id = default_bot.id
-    else:
-        bot_id = bots[0].id
-
-    # Use the new bot-specific endpoint
-    return await build_bot_with_preview(bot_id, files)
-
-@app.post("/query/")
-async def query_rag(request: QueryRequest):
-    """Legacy endpoint - uses first available bot"""
-    bots = bot_manager.get_active_bots()
-    if not bots:
-        raise HTTPException(status_code=400, detail="No bots available. Please create a bot first.")
-
-    bot_id = bots[0].id
-    return await query_bot_rag(bot_id, request)
-
-@app.get("/status/")
-async def status():
-    """Legacy endpoint - returns status of all bots"""
-    bots = bot_manager.get_active_bots()
-    bot_statuses = []
-
-    for bot in bots:
-        stats = bot_manager.get_bot_stats(bot.id)
-        bot_statuses.append({
-            "bot_id": bot.id,
-            "bot_name": bot.name,
-            **stats
-        })
-
-    return {"bots": bot_statuses}
-
-# =========================
-# Endpoint 1: Download DB
-# =========================
-@app.get("/download_db/")
-async def download_db():
-    shutil.make_archive("vector_db_backup", "zip", "vector_db")
-    return FileResponse("vector_db_backup.zip", filename="vector_db_backup.zip")
-
-# =========================
-# Endpoint 2: Build DB
-# =========================
-@app.post("/build_db/")
-async def build_db(
-    files: List[UploadFile] = File(...),
-    chunk_size: int = Form(500),
-    chunk_overlap: int = Form(50),
-    embedding_model: str = Form("sentence-transformers/all-MiniLM-L6-v2"),
-    ocr_lang: str = Form("eng"),
-    use_cached: bool = Form(False),  # New parameter to use cached data
-):
-    global vectorstore, processed_data_cache
-    temp_files = []
-
-    try:
-        # Check if we should use cached processed data
-        if use_cached and processed_data_cache and (time.time() - processed_data_cache.get("timestamp", 0)) < 300:  # 5 min cache
-            print("[INFO] Using cached processed data")
-            all_texts = processed_data_cache["all_texts"]
-            preview_lines = processed_data_cache["preview_lines"]
-        else:
-            print("[INFO] Processing files fresh (no cache or cache expired)")
-            all_texts = []
-            preview_lines = []
-
-            for f in files:
-                if not f.filename:
-                    continue
-                content = await f.read()
-                if not content:
-                    continue
-
-                # Create metadata for the file
-                file_metadata = {
-                    "source": f.filename,
-                    "file_type": os.path.splitext(f.filename)[1],
-                    "uploaded_at": datetime.now().isoformat()
-                }
-
-                temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
-                temp_files.append(temp_path)
-
-                try:
-                    with os.fdopen(temp_fd, "wb") as temp:
-                        temp.write(content)
-                    # Pass through OCR language as received from frontend (Tesseract code like "tel", "hin", "eng")
-                    # The converter will normalize it internally.
-                    print(f"[DEBUG] OCR lang from frontend (passthrough): {ocr_lang}")
-                    json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
-                    for page in json_data["pages"]:
-                        text = page.get("content_en") or page.get("content_original", "")
-                        cleaned = text.replace("\n", " ").strip()
-                        if cleaned:
-                            all_texts.append(cleaned)
-                            if len(preview_lines) < 10:
-                                preview_lines.append(f"--- From file: {f.filename}, page {page['page_number']} ---")
-                                preview_lines.append(cleaned[:500] + ("..." if len(cleaned) > 500 else ""))
-                                preview_lines.append("")
-                finally:
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
-
-        if not all_texts:
-            raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
-
-        combined_text = " ".join(all_texts)
-        # Use default chunk parameters since they've been removed from bot config
-        chunks = chunk_text(combined_text)
-        embeddings_model = get_embeddings_model()
-
-        vectorstore = append_to_vectorstore(
-                                                chunks,
-                                                embeddings_model,
-                                                collection_name="rag_db",
-                                                persist_directory=DB_DIR
-                                            )
-
-
-        # No explicit persist(); modern Chroma persists automatically when using a persistent directory
-
-        return {
-            "status": "database built",
-            "num_chunks": len(chunks),
-            "preview": preview_lines,
-            "used_cache": use_cached and processed_data_cache and (time.time() - processed_data_cache.get("timestamp", 0)) < 300
-        }
-
-    except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        print(f"[ERROR] build_db failed: {e}\n{tb}")
-        for p in temp_files:
-            if os.path.exists(p):
-                os.unlink(p)
-        raise HTTPException(status_code=500, detail=f"Error building database: {str(e)}")
-
-# =========================
-# Endpoint 3: Query RAG
-# =========================
-@app.post("/query/")
-async def query_rag(request: QueryRequest):
-    global vectorstore
-    load_vectorstore_if_needed()
-
-    if not vectorstore:
-        raise HTTPException(status_code=400, detail="Vector store not built yet. Please build database first.")
-
-    # If this is a historical message and we have conversation_id, return the stored response
-    if request.conversation_id and request.message_id:
-        try:
-            stored_messages = chat_manager.get_conversation_messages(request.bot_id, request.conversation_id)
-            for msg in stored_messages:
-                if msg["id"] == request.message_id and msg["role"] == "assistant":
-                    return {
-                        "answer": msg["content"],
-                        "retrieved_chunks": [],
-                        "from_history": True
-                    }
-        except Exception as e:
-            print(f"Warning: Could not retrieve history: {str(e)}")
-            # Continue with normal query if history retrieval fails
-
-        # Generate new response
-    try:
-        # Check if vectorstore is initialized
-        if not vectorstore:
-            raise HTTPException(status_code=500, detail="Vector store not initialized")
-
-        # Query vectorstore with error handling
-        try:
-            retrieved_chunks = query_vectorstore(vectorstore, request.prompt, top_k=request.top_k)
-            if not retrieved_chunks:
-                print("Warning: No relevant chunks found for the query")
-                retrieved_chunks = []
-        except Exception as e:
-            print(f"Vector store query error: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Vector store query failed: {str(e)}")
-
-        context = " ".join(retrieved_chunks) if retrieved_chunks else ""
-        llm_prompt = f"Answer the question based on the context below:\n\n{context}\n\nQuestion: {request.prompt}"
-
-        messages = [
-            {"role": "system", "content": "Answer directly based on the given context. Be concise and accurate."},
-            {"role": "user", "content": llm_prompt}
-        ]
-
-        try:
-            # No model validation: allow any model name, let LLM provider handle errors
-            response = await llm_client.chat(messages, model=request.llm_model)
-        except Exception as e:
-            print(f"LLM query error: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"LLM query failed: {str(e)}")
-
-        # Save to history if conversation tracking is enabled
-        if request.conversation_id and request.bot_id:
-            try:
-                chat_manager.save_message(request.bot_id, request.conversation_id, "user", request.prompt)
-                chat_manager.save_message(request.bot_id, request.conversation_id, "assistant", response)
-            except Exception as e:
-                print(f"Warning: Could not save to history: {str(e)}")
-
-        # Get bot name safely
-        bot_name = None
-        if request.bot_id:
-            try:
-                bot = bot_manager.get_bot_by_id(request.bot_id)
-                bot_name = bot.name if bot else None
-            except Exception as e:
-                print(f"Warning: Could not get bot name: {str(e)}")
-
-        return {
-            "answer": {
-                "message": {
-                    "content": response
-                }
-            },
-            "retrieved_chunks": retrieved_chunks,
-            "bot_id": request.bot_id,
-            "bot_name": bot_name
-        }
-
-    except HTTPException as e:
-        raise e  # Re-raise HTTP exceptions as is
-    except Exception as e:
-        print(f"Unexpected error in query endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error querying: {str(e)}")
-
-# =========================
-# Endpoint 4: Status
-# =========================
-@app.get("/status/")
-async def status():
-    global vectorstore
-    if vectorstore:
-        return {"vector_store_ready": True, "num_chunks": len(vectorstore._collection.get()["documents"])}
-    else:
-        return {"vector_store_ready": False, "num_chunks": 0}
-
-# =========================
-# Endpoint 5: Process & Recommend (New combined endpoint)
-# =========================
-@app.post("/process_and_recommend/")
-async def process_and_recommend(
-    files: List[UploadFile] = File(...),
-    ocr_lang: str = Form("eng"),
-):
-    global processed_data_cache
-    
-    def get_recommendation(text_size_kb):
-        if text_size_kb < 50:
-            return {"chunk_size": 300, "chunk_overlap": 30}
-        elif text_size_kb < 500:
-            return {"chunk_size": 600, "chunk_overlap": 60}
-        elif text_size_kb < 2000:
-            return {"chunk_size": 1000, "chunk_overlap": 100}
-        else:
-            return {"chunk_size": 1500, "chunk_overlap": 150}
-
-    # Process files to get actual text content and recommendations
-    all_texts = []
-    preview_lines = []
-    total_text_length = 0
-    total_file_size_kb = 0
-    temp_files = []
-    
-    try:
-        for f in files:
-            if not f.filename:
-                continue
-            content = await f.read()
-            if not content:
-                continue
-
-            total_file_size_kb += len(content) / 1024
-            temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
-            temp_files.append(temp_path)
-
-            try:
-                with os.fdopen(temp_fd, "wb") as temp:
-                    temp.write(content)
-                
-                # Process to JSON and measure actual text content
-                print(f"[DEBUG] Processing file {f.filename} with OCR lang: {ocr_lang}")
-                json_data = convert_to_json(temp_path, ocr_lang=ocr_lang)
-                
-                for page in json_data["pages"]:
-                    text = page.get("content_en") or page.get("content_original", "")
-                    cleaned = text.replace("\n", " ").strip()
-                    if cleaned:
-                        all_texts.append(cleaned)
-                        total_text_length += len(text)
-                        if len(preview_lines) < 10:
-                            preview_lines.append(f"--- From file: {f.filename}, page {page['page_number']} ---")
-                            preview_lines.append(cleaned[:500] + ("..." if len(cleaned) > 500 else ""))
-                            preview_lines.append("")
-            finally:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-    finally:
-        # Clean up any remaining temp files
-        for p in temp_files:
-            if os.path.exists(p):
-                os.unlink(p)
-
-    if not all_texts:
-        raise HTTPException(status_code=400, detail="No valid content found in uploaded files")
-
-    # Convert text length to KB for recommendation
-    total_text_kb = total_text_length / 1024
-    recommendation = get_recommendation(total_text_kb)
-    
-    # Cache processed data for build_db to reuse
-    processed_data_cache = {
-        "all_texts": all_texts,
-        "preview_lines": preview_lines,
-        "ocr_lang": ocr_lang,
-        "timestamp": time.time()
-    }
-    
-    return {
-        "recommended_chunk_size": recommendation["chunk_size"],
-        "recommended_chunk_overlap": recommendation["chunk_overlap"],
-        "total_text_size_kb": round(total_text_kb, 2),
-        "total_file_size_kb": round(total_file_size_kb, 2),
-        "preview": preview_lines,
-        "num_pages": len([line for line in preview_lines if "page" in line])
-    }
-
-# =========================
-# Endpoint 6: Legacy Recommend Chunk Settings (kept for compatibility)
-# =========================
-@app.post("/recommend_chunk_settings/")
-async def recommend_chunk_settings(files: List[UploadFile] = File(...)):
-    def get_recommendation(text_size_kb):
-        if text_size_kb < 50:
-            return {"chunk_size": 300, "chunk_overlap": 30}
-        elif text_size_kb < 500:
-            return {"chunk_size": 600, "chunk_overlap": 60}
-        elif text_size_kb < 2000:
-            return {"chunk_size": 1000, "chunk_overlap": 100}
-        else:
-            return {"chunk_size": 1500, "chunk_overlap": 150}
-
-    # Process files to get actual text content size (not raw file size)
-    total_text_length = 0
-    total_file_size_kb = 0
-    temp_files = []
-    
-    try:
-        for f in files:
-            if not f.filename:
-                continue
-            content = await f.read()
-            if not content:
-                continue
-
-            total_file_size_kb += len(content) / 1024
-            temp_fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(f.filename)[1])
-            temp_files.append(temp_path)
-
-            try:
-                with os.fdopen(temp_fd, "wb") as temp:
-                    temp.write(content)
-                
-                # Process to JSON and measure actual text content
-                json_data = convert_to_json(temp_path, ocr_lang="eng")  # Default to English for recommendation
-                for page in json_data["pages"]:
-                    text = page.get("content_en") or page.get("content_original", "")
-                    total_text_length += len(text)
-            finally:
-                if os.path.exists(temp_path):
-                    os.unlink(temp_path)
-    finally:
-        # Clean up any remaining temp files
-        for p in temp_files:
-            if os.path.exists(p):
-                os.unlink(p)
-
-    # Convert text length to KB for recommendation
-    total_text_kb = total_text_length / 1024
-
-    recommendation = get_recommendation(total_text_kb)
-    return {
-        "recommended_chunk_size": recommendation["chunk_size"],
-        "recommended_chunk_overlap": recommendation["chunk_overlap"],
-        "total_text_size_kb": round(total_text_kb, 2),
-        "total_file_size_kb": round(total_file_size_kb, 2)
-    }
 
 # =========================
 # Run with:

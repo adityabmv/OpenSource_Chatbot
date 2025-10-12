@@ -55,7 +55,35 @@
       "vectorstore_path": "vector_db_a_20251012",
       "is_active": true,
       "uid": "W88QCwG6l4MPToKnMn2w31N9oFu2"
+    },
+    {
+      "id": "d5f67d1c-ecfa-44e1-b30b-08197bfb441c",
+      "name": "POP_onion",
+      "description": "",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "tel",
+      "created_at": "2025-10-12 14:48:04.010904",
+      "updated_at": "2025-10-12 14:48:04.010904",
+      "vectorstore_path": "vector_db_POP_onion_20251012",
+      "is_active": true,
+      "uid": "Gvcl0pqUMRYNucCwOvWKHzzBKIE3"
+    },
+    {
+      "id": "956c3649-0bd3-4ad3-afdc-021ab15940bd",
+      "name": "Graph",
+      "description": "",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-12 14:59:15.293503",
+      "updated_at": "2025-10-12 14:59:15.293503",
+      "vectorstore_path": "vector_db_Graph_20251012",
+      "is_active": true,
+      "uid": "Gvcl0pqUMRYNucCwOvWKHzzBKIE3"
     }
   ],
-  "last_updated": "2025-10-12T11:36:42.662637"
+  "last_updated": "2025-10-12T14:59:15.299223"
 }
