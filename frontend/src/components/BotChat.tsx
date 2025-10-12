@@ -377,10 +377,11 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
           <div className="mt-4 pt-4 border-t border-zinc-700">
             <div className="flex gap-2">
               <button
-                onClick={() => setShowFileUpload(!showFileUpload)}
+                onClick={() => setShowFileUpload(true)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                disabled={showFileUpload}
               >
-                {uploadedFiles.length > 0 ? (showFileUpload ? 'Hide File Upload' : 'Add More Files') : 'Upload Files & Build Database'}
+                {uploadedFiles.length > 0 ? 'Add More Files' : 'Upload Files & Build Database'}
               </button>
               {uploadedFiles.length > 0 && (
                 <button
