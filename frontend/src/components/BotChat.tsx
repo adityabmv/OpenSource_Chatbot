@@ -14,22 +14,30 @@ interface BotChatProps {
   onBack: () => void;
 }
 
+// Add Tab interface
+interface ChatTab {
+  id: string;
+  title: string;
+  messages: Array<{
+    user: string;
+    bot: string;
+    timestamp: Date;
+    sources?: Array<{
+      content: string;
+      metadata: {
+        source: string;
+        page?: number;
+        chunk_index: number;
+      };
+    }>;
+  }>;
+}
+
 const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [openRouterApiKey, setOpenRouterApiKey] = useState('');
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<Array<{
-    user: string, 
-    bot: string, 
-    timestamp: Date,
-    sources?: Array<{
-      content: string,
-      metadata: {
-        source: string,
-        page?: number,
-        chunk_index: number
-      }
-    }>
-  }>>([]);
+  const [tabs, setTabs] = useState<ChatTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [llmModel, setLlmModel] = useState('deepseek/deepseek-r1-0528-qwen3-8b:free');
     // Remove availableModels state
@@ -58,12 +66,12 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [tempOcrLang, setTempOcrLang] = useState(bot.ocr_lang);
 
   // Chat history state
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(true);
 
   useEffect(() => {
     loadBotStats();
     loadUploadedFiles();
+    handleNewConversation();
   }, [bot.id]);
 
   const loadBotStats = async () => {
@@ -91,11 +99,17 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   };
 
   const sendMessage = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !activeTabId) return;
 
     const userMessage = prompt;
     setLoading(true);
-    setMessages(prev => [...prev, { user: userMessage, bot: '...', timestamp: new Date() }]);
+    
+    // Add message to active tab
+    setTabs(prev => prev.map(tab => 
+      tab.id === activeTabId 
+        ? { ...tab, messages: [...tab.messages, { user: userMessage, bot: '...', timestamp: new Date() }] }
+        : tab
+    ));
 
     try {
       const response = await apiClient.post(`${API_BASE}/bots/${bot.id}/query/`, {
@@ -109,38 +123,47 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
       const botResponse = response.data.answer.message.content;
       const sources = response.data.retrieved_chunks;
 
-      setMessages(prev =>
-        prev.slice(0, -1).concat([{
-          user: userMessage,
-          bot: botResponse,
-          timestamp: new Date(),
-          sources: sources
-        }])
-      );
+      setTabs(prev => prev.map(tab => 
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              title: tab.messages.length === 1 ? userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') : tab.title,
+              messages: tab.messages.slice(0, -1).concat([{
+                user: userMessage,
+                bot: botResponse,
+                timestamp: new Date(),
+                sources: sources
+              }])
+            }
+          : tab
+      ));
 
-      // Save to chat history if we have a conversation ID
-      if (currentConversationId) {
-        try {
-          await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
-            role: 'user',
-            content: userMessage
-          });
-          await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${currentConversationId}/messages`, {
-            role: 'assistant',
-            content: botResponse
-          });
-        } catch (error) {
-          console.error('Failed to save message to history:', error);
-        }
+      // Save to chat history
+      try {
+        await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${activeTabId}/messages`, {
+          role: 'user',
+          content: userMessage
+        });
+        await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations/${activeTabId}/messages`, {
+          role: 'assistant',
+          content: botResponse
+        });
+      } catch (error) {
+        console.error('Failed to save message to history:', error);
       }
     } catch (error: any) {
-      setMessages(prev =>
-        prev.slice(0, -1).concat([{
-          user: userMessage,
-          bot: `Error: ${error.response?.data?.detail || error.message}`,
-          timestamp: new Date()
-        }])
-      );
+      setTabs(prev => prev.map(tab => 
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              messages: tab.messages.slice(0, -1).concat([{
+                user: userMessage,
+                bot: `Error: ${error.response?.data?.detail || error.message}`,
+                timestamp: new Date()
+              }])
+            }
+          : tab
+      ));
     }
 
     setPrompt('');
@@ -148,19 +171,64 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   };
 
   const handleLoadConversation = async (conversationId: string, loadedMessages: any[]) => {
-    setCurrentConversationId(conversationId);
-    setMessages(loadedMessages);
+    // Check if tab already exists
+    const existingTab = tabs.find(tab => tab.id === conversationId);
+    
+    if (existingTab) {
+      setActiveTabId(conversationId);
+    } else {
+      // Create new tab with loaded messages
+      const newTab: ChatTab = {
+        id: conversationId,
+        title: loadedMessages.length > 0 
+          ? loadedMessages[0].user.slice(0, 30) + (loadedMessages[0].user.length > 30 ? '...' : '')
+          : 'Loaded Chat',
+        messages: loadedMessages
+      };
+      setTabs(prev => [...prev, newTab]);
+      setActiveTabId(conversationId);
+    }
   };
 
   const handleNewConversation = async () => {
     try {
       const response = await apiClient.post(`${API_BASE}/bots/${bot.id}/chat/conversations`);
-      setCurrentConversationId(response.data.conversation_id);
-      setMessages([]);
+      const conversationId = response.data.conversation_id;
+      
+      const newTab: ChatTab = {
+        id: conversationId,
+        title: 'New Chat',
+        messages: []
+      };
+      
+      setTabs(prev => [...prev, newTab]);
+      setActiveTabId(conversationId);
     } catch (error) {
       console.error('Failed to create new conversation:', error);
     }
   };
+
+  const closeTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    setTabs(prev => {
+      const newTabs = prev.filter(tab => tab.id !== tabId);
+      
+      // If closing active tab, switch to another tab
+      if (activeTabId === tabId && newTabs.length > 0) {
+        setActiveTabId(newTabs[newTabs.length - 1].id);
+      }
+      
+      // If no tabs left, create a new one
+      if (newTabs.length === 0) {
+        setTimeout(() => handleNewConversation(), 0);
+      }
+      
+      return newTabs;
+    });
+  };
+
+  const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -444,16 +512,52 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
           <ChatHistory
             botId={bot.id}
             onLoadConversation={handleLoadConversation}
-            currentConversationId={currentConversationId}
+            currentConversationId={activeTabId}
             onNewConversation={handleNewConversation}
           />
         )}
 
         {/* Main Chat Area */}
         <div className="bg-zinc-900/50 rounded-lg border border-zinc-700 flex flex-col flex-1 min-w-0">
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-2 pt-2 border-b border-zinc-700 overflow-x-auto">
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                onClick={() => setActiveTabId(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-t-lg cursor-pointer transition-colors min-w-0 max-w-[200px] ${
+                  activeTabId === tab.id
+                    ? 'bg-zinc-800 text-white border-t border-l border-r border-zinc-600'
+                    : 'bg-zinc-900/50 text-zinc-400 hover:bg-zinc-800/50'
+                }`}
+              >
+                <span className="truncate text-sm flex-1">{tab.title}</span>
+                {tabs.length > 1 && (
+                  <button
+                    onClick={(e) => closeTab(tab.id, e)}
+                    className="hover:bg-zinc-700 rounded p-0.5 flex-shrink-0"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={handleNewConversation}
+              className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors flex-shrink-0"
+              title="New Chat"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 && (
+            {(!activeTab || activeTab.messages.length === 0) && (
               <div className="text-center text-zinc-500 mt-16">
                 {botStats?.vectorstore_exists
                   ? `Start a conversation with ${bot.name}!`
@@ -461,7 +565,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
                 }
               </div>
             )}
-            {messages.map((msg, i) => (
+            {activeTab && activeTab.messages.map((msg, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
