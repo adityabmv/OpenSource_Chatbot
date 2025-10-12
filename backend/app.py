@@ -82,9 +82,10 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,   # use the computed list, or ["*"] for dev
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,  # Change to True if you need to support cookies/auth (not recommended for public APIs
 )
 
 class QueryRequest(BaseModel):
