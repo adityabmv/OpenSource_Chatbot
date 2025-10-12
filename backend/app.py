@@ -190,6 +190,44 @@ async def get_bot_stats(bot_id: str):
         raise HTTPException(status_code=404, detail="Bot not found")
     return {"stats": stats}
 
+@app.get("/bots/{bot_id}/files")
+async def get_bot_files(bot_id: str):
+    """Get list of uploaded files for a bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    files = bot_manager.get_uploaded_files(bot_id)
+    return {"files": files, "total_files": len(files)}
+
+@app.post("/bots/{bot_id}/rebuild")
+async def rebuild_bot_database(bot_id: str):
+    """Clear all uploaded files and reset database for a bot"""
+    bot = bot_manager.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    
+    try:
+        # Clear uploaded files list
+        bot_manager.clear_uploaded_files(bot_id)
+        
+        # Delete vectorstore directory
+        vectorstore_path = bot.vectorstore_path
+        if os.path.exists(vectorstore_path):
+            shutil.rmtree(vectorstore_path)
+            print(f"Deleted vectorstore at {vectorstore_path}")
+        
+        return {
+            "status": "success",
+            "message": "Bot database cleared successfully. Upload new files to rebuild.",
+            "bot_id": bot_id
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[ERROR] rebuild_bot_database failed: {e}\n{tb}")
+        raise HTTPException(status_code=500, detail=f"Error rebuilding database: {str(e)}")
+
 # =========================
 # Updated Endpoints for Bot Support
 # =========================
@@ -266,6 +304,19 @@ async def build_bot_with_preview(
             persist_directory=bot.vectorstore_path
         )
 
+        # Track uploaded files
+        files_info = []
+        for f in files:
+            if f.filename:
+                files_info.append({
+                    "name": f.filename,
+                    "size": f.size if hasattr(f, 'size') else 0,
+                    "uploaded_at": datetime.now().isoformat()
+                })
+        
+        # Add files to bot's uploaded files list
+        bot_manager.add_uploaded_files(bot_id, files_info)
+
         return {
             "status": "database built",
             "bot_id": bot_id,
@@ -279,8 +330,9 @@ async def build_bot_with_preview(
             },
             "preview": preview_lines,
             "total_text_size": sum(len(chunk["text"]) for chunk in chunks),
-            "files_processed": 1,  # Only count the actual source file
-            "source_files": [f.filename for f in files]  # List of original file names
+            "files_processed": len(files_info),
+            "source_files": [f["name"] for f in files_info],
+            "uploaded_files": files_info
         }
 
     except Exception as e:
