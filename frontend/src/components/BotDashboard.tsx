@@ -1,5 +1,5 @@
 // BotDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../auth/AuthContext.tsx';
 import apiClient from '../api/client';
 import { API_BASE } from '../config.ts';
@@ -13,19 +13,17 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+
   // Create bot form state
   const [newBot, setNewBot] = useState({
-  name: '',
-  description: '',
-  embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
-  ocr_lang: 'eng',
-  openrouter_api_key: ''
+    name: '',
+    description: '',
+    embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
+    ocr_lang: 'eng',
+    openrouter_api_key: ''
   });
 
-  useEffect(() => {
-  console.log("BotDashboard mounted: triggering loadBots()");
-  loadBots();
-  }, []);
+  const { uid } = useAuth();
 
   const testResponseFormat = (response: any) => {
     if (!response || typeof response !== 'object' || !Array.isArray(response.data?.bots)) {
@@ -35,9 +33,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     return true;
   };
 
-  const loadBots = async () => {
+  const loadBots = useCallback(async () => {
     console.log("loadBots called");
-    const { uid } = useAuth();
     try {
       setLoading(true);
       const testUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
@@ -48,8 +45,8 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
           'x-user-uid': uid || ''
         }
       });
-  console.log("Received response:", response);
-  console.log("Received response.data:", response.data);
+      console.log("Received response:", response);
+      console.log("Received response.data:", response.data);
       if (!testResponseFormat(response)) {
         throw new Error('Invalid response format');
       }
@@ -83,11 +80,17 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     } finally {
       setLoading(false);
     }
-  };
+  }, [uid]);
+
+  useEffect(() => {
+    console.log("BotDashboard mounted: triggering loadBots()");
+    if (uid) {
+      loadBots();
+    }
+  }, [uid, loadBots]);
 
   const createBot = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { uid } = useAuth();
     try {
       const createUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
       await apiClient.post(createUrl, { ...newBot, uid }, {
@@ -114,8 +117,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     if (!confirm('Are you sure you want to delete this bot? This action cannot be undone.')) {
       return;
     }
-
-    const { uid } = useAuth();
     try {
       const deleteUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${botId}`;
       await apiClient.delete(deleteUrl, {
@@ -312,5 +313,6 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     </div>
   );
 };
+
 
 export default BotDashboard;

@@ -11,7 +11,8 @@
       "created_at": "2025-10-11 16:15:54.019051",
       "updated_at": "2025-10-11 16:15:54.019051",
       "vectorstore_path": "vector_db_AA_20251011",
-      "is_active": true
+      "is_active": true,
+      "uid": ""
     },
     {
       "id": "8f451d88-d861-46f8-8a72-012d3482f98b",
@@ -24,8 +25,37 @@
       "created_at": "2025-10-11 20:04:06.025162",
       "updated_at": "2025-10-11 20:04:06.025162",
       "vectorstore_path": "vector_db_a_20251011",
-      "is_active": true
+      "is_active": true,
+      "uid": ""
+    },
+    {
+      "id": "2cd5b31e-ee9c-48c3-b0d9-f046cf9f59a8",
+      "name": "AAA",
+      "description": "AAA",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "openai/text-embedding-ada-002",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-11 23:53:26.566943",
+      "updated_at": "2025-10-11 23:53:26.566943",
+      "vectorstore_path": "vector_db_AAA_20251011",
+      "is_active": true,
+      "uid": ""
+    },
+    {
+      "id": "5f6f9422-9b97-4bb2-bfc7-155da0f667a8",
+      "name": "a",
+      "description": "a",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-12 11:36:42.637261",
+      "updated_at": "2025-10-12 11:36:42.637261",
+      "vectorstore_path": "vector_db_a_20251012",
+      "is_active": true,
+      "uid": "W88QCwG6l4MPToKnMn2w31N9oFu2"
     }
   ],
-  "last_updated": "2025-10-11T20:04:06.027174"
+  "last_updated": "2025-10-12T11:36:42.662637"
 }
