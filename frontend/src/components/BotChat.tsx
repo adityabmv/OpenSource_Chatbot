@@ -49,6 +49,10 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [botStats, setBotStats] = useState<BotStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
+  // Uploaded files state
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{name: string, size: number, uploaded_at: string}>>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
   // Preprocessing settings (can be different from bot defaults)
   const [tempChunkSize, setTempChunkSize] = useState("default");
   const [tempOcrLang, setTempOcrLang] = useState(bot.ocr_lang);
@@ -59,17 +63,30 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
 
   useEffect(() => {
     loadBotStats();
+    loadUploadedFiles();
   }, [bot.id]);
 
   const loadBotStats = async () => {
     try {
       setLoadingStats(true);
-      const response = await apiClient.get(`${API_BASE}/bots/${bot.id}/status/`);
-      setBotStats(response.data);
+      const response = await apiClient.get(`${API_BASE}/bots/${bot.id}/stats`);
+      setBotStats(response.data.stats);
     } catch (error) {
       console.error('Failed to load bot stats:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const loadUploadedFiles = async () => {
+    try {
+      setLoadingFiles(true);
+      const response = await apiClient.get(`${API_BASE}/bots/${bot.id}/files`);
+      setUploadedFiles(response.data.files || []);
+    } catch (error) {
+      console.error('Failed to load uploaded files:', error);
+    } finally {
+      setLoadingFiles(false);
     }
   };
 
@@ -189,13 +206,37 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
       setFiles([]);
       setShowFileUpload(false);
 
-      // Reload bot stats after successful build
+      // Reload bot stats and uploaded files after successful build
       await loadBotStats();
+      await loadUploadedFiles();
     } catch (e: any) {
       setBuildStatus('error');
       setBuildError(e.response?.data?.detail || 'Failed to build database');
     }
     setUploading(false);
+  };
+
+  const rebuildDatabase = async () => {
+    if (!confirm('Are you sure you want to rebuild the database from scratch? This will delete all uploaded files and the current database.')) {
+      return;
+    }
+
+    try {
+      setBuildStatus('building');
+      await apiClient.post(`${API_BASE}/bots/${bot.id}/rebuild`);
+      setBuildStatus('success');
+      setDbStatus('✅ Database cleared successfully. Upload new files to rebuild.');
+      
+      // Reload stats and files
+      await loadBotStats();
+      await loadUploadedFiles();
+      
+      // Show file upload section
+      setShowFileUpload(true);
+    } catch (e: any) {
+      setBuildStatus('error');
+      setBuildError(e.response?.data?.detail || 'Failed to rebuild database');
+    }
   };
 
   return (
@@ -242,14 +283,46 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
             </div>
           </div>
 
+          {/* Uploaded Files Section */}
+          {uploadedFiles.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-zinc-700">
+              <h3 className="text-sm font-semibold text-zinc-300 mb-2">Uploaded Documents ({uploadedFiles.length})</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex justify-between items-center bg-zinc-800/50 p-2 rounded">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm text-white">{file.name}</span>
+                    </div>
+                    <span className="text-xs text-zinc-400">
+                      {new Date(file.uploaded_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* File Upload Toggle */}
           <div className="mt-4 pt-4 border-t border-zinc-700">
-            <button
-              onClick={() => setShowFileUpload(!showFileUpload)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              {showFileUpload ? 'Hide File Upload' : 'Upload Files & Build Database'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowFileUpload(!showFileUpload)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                {uploadedFiles.length > 0 ? (showFileUpload ? 'Hide File Upload' : 'Add More Files') : 'Upload Files & Build Database'}
+              </button>
+              {uploadedFiles.length > 0 && (
+                <button
+                  onClick={rebuildDatabase}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Rebuild Database
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
