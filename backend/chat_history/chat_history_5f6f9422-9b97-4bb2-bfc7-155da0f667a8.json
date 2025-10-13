@@ -1,0 +1,49 @@
+{
+  "conversations": [
+    {
+      "id": "conv_20251012_143252_4df54a9f",
+      "title": "Which states in India contribute to most of CSR in...",
+      "created_at": "2025-10-12T14:32:52.063872",
+      "updated_at": "2025-10-12T14:43:26.487453",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "Which states in India contribute to most of CSR in india and why is there a disparity?",
+          "timestamp": "2025-10-12T14:43:26.289753"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "Based on the data available in the CSR dataset, companies incorporated in **Kerala**, **Maharashtra**, and **Karnataka** consistently show the highest CSR contributions.\n\nThe primary reasons for this disparity include:\n\n1.  **Presence of Large Corporates:** These states host a significant number of large-scale industries and corporations, many falling under Schedule VII of the Companies Act, 2013, mandating them to spend on CSR activities.\n2.  **Industrial Activity:** Higher industrial output and economic activity in these states often correlate with larger net profits in companies, enabling greater CSR expenditure.\n3.  **Number of Companies Mandated:** The sheer number of companies required to spend on CSR (due to meeting the average net profit threshold) in these states leads to aggregated higher spending compared to states with fewer such companies.\n4.  **Rule Compliance & Reporting:** Companies incorporate their CSR activities and spending according to Rules framed under the Act, and larger industrial hubs likely have more companies reporting and spending within Chapter IV's framework.\n\n*(Note: This explanation is based on the patterns observed in the CSR dataset regarding company presence and mandatory spending.)*",
+          "timestamp": "2025-10-12T14:43:26.487453"
+        }
+      ],
+      "uid": ""
+    },
+    {
+      "id": "conv_20251012_160803_4ce633f2",
+      "title": "New Conversation",
+      "created_at": "2025-10-12T16:08:03.889744",
+      "updated_at": "2025-10-12T16:08:03.889744",
+      "messages": [],
+      "uid": ""
+    },
+    {
+      "id": "conv_20251012_194643_d87f2b2c",
+      "title": "New Conversation",
+      "created_at": "2025-10-12T19:46:43.193394",
+      "updated_at": "2025-10-12T19:46:43.193394",
+      "messages": [],
+      "uid": ""
+    },
+    {
+      "id": "conv_20251012_222905_28cb217c",
+      "title": "New Conversation",
+      "created_at": "2025-10-12T22:29:05.143234",
+      "updated_at": "2025-10-12T22:29:05.143234",
+      "messages": [],
+      "uid": ""
+    }
+  ]
+}

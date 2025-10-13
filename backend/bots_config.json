@@ -83,7 +83,21 @@
       "vectorstore_path": "vector_db_Graph_20251012",
       "is_active": true,
       "uid": "Gvcl0pqUMRYNucCwOvWKHzzBKIE3"
+    },
+    {
+      "id": "9bf2ce39-90ab-4af1-a79e-3577bcf0af24",
+      "name": "kSHITIH",
+      "description": "AAA",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-12 17:14:10.183712",
+      "updated_at": "2025-10-12 17:14:10.183712",
+      "vectorstore_path": "vector_db_kSHITIH_20251012",
+      "is_active": true,
+      "uid": "Tl06XJ6GAfNqpdpMCc8DftDMvsL2"
     }
   ],
-  "last_updated": "2025-10-12T14:59:15.299223"
+  "last_updated": "2025-10-12T17:14:10.190979"
 }

@@ -6,6 +6,51 @@ from nltk_processor import NLTKProcessor
 # Initialize NLTK processor
 nltk_proc = NLTKProcessor()
 
+def process_pdf_with_docling(pdf_path: str, lang: list = ["eng"], force_ocr: bool = True) -> str:
+    """
+    Process a PDF with Docling and return Markdown text.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        lang (list): List of languages for OCR (default: English)
+        force_ocr (bool): Whether to force full-page OCR
+        
+    Returns:
+        str: Markdown text extracted from the PDF
+    """
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliOcrOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from pathlib import Path
+    import os
+    
+    # Prevent huggingface_hub from creating symlinks on Windows
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
+    
+    input_path = Path(pdf_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_path}")
+    
+    # Set OCR options
+    ocr_options = TesseractCliOcrOptions(lang=lang)
+    pipeline_options = PdfPipelineOptions(
+        do_ocr=True, 
+        force_full_page_ocr=force_ocr, 
+        ocr_options=ocr_options
+    )
+    
+    # Create converter
+    converter = DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+        }
+    )
+    
+    # Convert PDF
+    conv_res = converter.convert(input_path)
+    doc = conv_res.document
+    return doc.export_to_markdown()
+
 def make_simple_metadata(metadata):
     simple = {}
     for k, v in metadata.items():
