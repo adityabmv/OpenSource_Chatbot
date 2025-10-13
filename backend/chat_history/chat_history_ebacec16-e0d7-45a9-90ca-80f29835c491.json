@@ -1,0 +1,25 @@
+{
+  "conversations": [
+    {
+      "id": "conv_20251013_140336_d0659dfa",
+      "title": "I am a businessman who amde 6cr profit last year. ...",
+      "created_at": "2025-10-13T14:03:36.234032",
+      "updated_at": "2025-10-13T14:16:34.212354",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "I am a businessman who amde 6cr profit last year. What contribution I am under complusion to?",
+          "timestamp": "2025-10-13T14:16:34.010158"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "Based on the context provided, which aligns with the provisions of the Companies Act, 2013, here is the concise answer:\n\n**Yes, you are under compulsion to contribute.**  \n**Requirement:**  \n- If your company's net profit in the **immediately preceding financial year is \u20b95 crore or more**, you must spend **at least 2% of the average net profit from the preceding three years** on CSR activities.  \n\n**Calculation:**  \n- Since your profit last year was **\u20b96 crore**, you meet the basic criterion.  \n- Your annual CSR contribution will be calculated as **2% of the average net profit** for the three years preceding the current year.  \n- For example, if your average net profit over the last three years was **\u20b950 crore**, your CSR contribution would be **\u20b91 crore** (2% of \u20b950 crore).  \n\n**Action:**  \n- Consult your company's financial records to determine the average net profit over the last three years.  \n- Ensure the CSR activities undertaken align with Schedule VII of the Companies Act.  \n\nThis obligation is mandatory only if your company is **subject to the Companies Act, 2013**, meaning it is incorporated in India and meets the qualifying financial thresholds. If your company is a foreign entity or an LLP, CSR provisions may not apply.",
+          "timestamp": "2025-10-13T14:16:34.212354"
+        }
+      ],
+      "uid": ""
+    }
+  ]
+}

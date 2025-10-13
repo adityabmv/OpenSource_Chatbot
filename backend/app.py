@@ -1,7 +1,7 @@
 # app.py
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from typing import List, Optional
-from chunker import chunk_text, process_pdf_with_docling
+from chunker import chunk_text, process_pdf_with_docling, extract_text_from_file, translate_if_needed
 from embeddings import get_embeddings_model
 from vectorstore import append_to_vectorstore, query_vectorstore, get_bot_vectorstore
 from llm_client import LLMClient
@@ -264,56 +264,34 @@ async def build_bot_with_preview(
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
                 
-                if f.filename.lower().endswith('.pdf'):
-                    # Use Docling for PDF processing
-                    markdown_text = process_pdf_with_docling(temp_path, lang=[bot.ocr_lang] if bot.ocr_lang else ["eng"])
-                    if markdown_text.strip():
-                        # Create chunks with file-level metadata
-                        file_chunks = chunk_text(
-                            text=markdown_text,
-                            chunk_size=300,
-                            chunk_overlap=30,
-                            metadata={
-                                "file_name": f.filename,
-                                "page_number": 1,  # Docling processes whole document
-                                "language": bot.ocr_lang or "eng",
-                                "source_type": "document",
-                                "processor": "docling"
-                            }
-                        )
-                        all_texts.extend(file_chunks)
-                        
-                        # Add preview for first chunk
-                        if len(preview_lines) < 5:
-                            preview_lines.append(f"--- From file: {f.filename} (Docling processed) ---")
-                            preview_lines.append(file_chunks[0]["text"][:300] + "...")
-                            preview_lines.append("")
-                else:
-                    # Use existing convert_to_json for other file types
-                    json_data = convert_to_json(temp_path, ocr_lang=bot.ocr_lang)
-                    # Process each page and create structured chunks with metadata
-                    for page in json_data["pages"]:
-                        text = page.get("content_en") or page.get("content_original", "")
-                        if text.strip():
-                            # Create chunks with page-level metadata
-                            page_chunks = chunk_text(
-                                text=text,
-                                chunk_size=300,
-                                chunk_overlap=30,
-                                metadata={
-                                    "file_name": f.filename,
-                                    "page_number": page["page_number"],
-                                    "language": page.get("language", "unknown"),
-                                    "source_type": "document"
-                                }
-                            )
-                            all_texts.extend(page_chunks)
-                            
-                            # Add preview for first few chunks
-                            if len(preview_lines) < 5:
-                                preview_lines.append(f"--- From file: {f.filename}, page {page['page_number']} ---")
-                                preview_lines.append(page_chunks[0]["text"][:300] + "...")
-                                preview_lines.append("")
+                # Unified pipeline for all file types
+                file_extension = os.path.splitext(f.filename)[1][1:].lower()  # Get extension without dot
+                raw_text = extract_text_from_file(temp_path, file_extension, bot.ocr_lang)
+                
+                if raw_text.strip():
+                    # Translate if needed (Indic languages)
+                    processed_text = translate_if_needed(raw_text, bot.ocr_lang)
+                    
+                    # Create chunks
+                    file_chunks = chunk_text(
+                        text=processed_text,
+                        chunk_size=300,
+                        chunk_overlap=30,
+                        metadata={
+                            "file_name": f.filename,
+                            "language": bot.ocr_lang or "eng",
+                            "source_type": "document",
+                            "processor": "unified"
+                        }
+                    )
+                    all_texts.extend(file_chunks)
+                    
+                    # Add preview for first chunk
+                    if len(preview_lines) < 5:
+                        processor_name = "Docling" if file_extension == 'pdf' else "Unified"
+                        preview_lines.append(f"--- From file: {f.filename} ({processor_name} processed) ---")
+                        preview_lines.append(file_chunks[0]["text"][:300] + "...")
+                        preview_lines.append("")
             finally:
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
