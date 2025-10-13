@@ -1,11 +1,7 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import re
-from nltk_processor import NLTKProcessor
 import docling
 # from langchain_community.vectorstores.utils import filter_complex_metadata
-
-# Initialize NLTK processor
-nltk_proc = NLTKProcessor()
 
 def process_pdf_with_docling(pdf_path: str, lang: list = ["eng"], force_ocr: bool = True) -> str:
     """
@@ -65,7 +61,7 @@ def make_simple_metadata(metadata):
 def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
     """
     Splits text into chunks with specified size and overlap.
-    Uses NLTK for preprocessing and RecursiveCharacterTextSplitter for chunking.
+    Uses fast character-based chunking for speed.
     
     Args:
         text (str): The text to split into chunks
@@ -85,39 +81,22 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
             if isinstance(value, list):
                 metadata[key] = ", ".join(value)
     
-    # Advanced semantic chunking
-    from nltk.tokenize import sent_tokenize
-    from sentence_transformers import SentenceTransformer
-    from sklearn.cluster import KMeans
-    import numpy as np
-
-    # Tokenize text into sentences
-    sentences = sent_tokenize(text)
-    if len(sentences) == 0:
-        return []
-
-    # Embed sentences
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    embeddings = model.encode(sentences)
-
-    # Determine number of clusters (chunks)
-    n_chunks = max(1, len(sentences) // (chunk_size // 10))  # Roughly chunk_size words per chunk
-    kmeans = KMeans(n_clusters=n_chunks, random_state=42, n_init=5)
-    labels = kmeans.fit_predict(embeddings)
-
-    # Group sentences by cluster label
-    clustered = {}
-    for label, sentence in zip(labels, sentences):
-        clustered.setdefault(label, []).append(sentence)
-
-    # Build chunks
-    chunks = [" ".join(clustered[label]) for label in sorted(clustered.keys())]
-
-    # Extract key phrases for each chunk
+    # Fast character-based chunking for speed
+    words = text.split()
+    chunks = []
+    
+    for i in range(0, len(words), chunk_size - chunk_overlap):
+        chunk_words = words[i:i + chunk_size]
+        chunk_text = ' '.join(chunk_words)
+        if chunk_text.strip():  # Only add non-empty chunks
+            chunks.append(chunk_text)
+    
+    # Simple key phrase extraction
     chunk_phrases = []
     for chunk in chunks:
-        phrases = nltk_proc.extract_key_phrases(chunk)
-        print("Extracted phrases:", phrases)
+        # Simple heuristic: extract words longer than 4 characters
+        words = chunk.lower().split()
+        phrases = [word for word in words if len(word) > 4][:5]
         chunk_phrases.append(phrases)
 
     # Simplify metadata for vectorstore
@@ -129,24 +108,44 @@ def chunk_text(text, chunk_size=300, chunk_overlap=30, metadata=None):
 def extract_text_from_file(file_path: str, file_type: str, ocr_lang: str = "eng") -> str:
     """
     Unified text extraction for all file types.
-    
-    Args:
-        file_path (str): Path to the file
-        file_type (str): File extension (pdf, docx, txt, pptx, etc.)
-        ocr_lang (str): Language for OCR/processing
-        
-    Returns:
-        str: Extracted text content
+    FORCED OCR for all PDFs (from mmt.py integration).
     """
     file_type = file_type.lower()
     
     if file_type == 'pdf':
-        # Use Docling for PDFs
-        lang_list = [ocr_lang] if ocr_lang != "eng" else ["eng"]
-        return process_pdf_with_docling(file_path, lang=lang_list)
+        # FORCE OCR for all PDFs (skip PyMuPDF text extraction)
+        print("📄 Forcing OCR for PDF...")
+        try:
+            import pytesseract
+            from PIL import Image
+            import io
+            import fitz
+            
+            doc = fitz.open(file_path)
+            ocr_text = ""
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                pix = page.get_pixmap(dpi=300)
+                img_data = pix.tobytes("png")
+                img = Image.open(io.BytesIO(img_data))
+                page_text = pytesseract.image_to_string(img, lang=ocr_lang)
+                ocr_text += page_text + "\n"
+            
+            doc.close()
+            text = ocr_text
+            print(f"✅ OCR completed, extracted {len(text)} characters")
+            
+        except ImportError:
+            print("❌ pytesseract not installed for OCR")
+            raise ImportError("For PDFs, install: pip install pytesseract pillow")
+        except Exception as ocr_error:
+            print(f"❌ OCR failed: {ocr_error}")
+            raise
+        
+        return text
     
     elif file_type == 'docx':
-        # Extract from Word documents
         try:
             from docx import Document
             doc = Document(file_path)
@@ -155,12 +154,10 @@ def extract_text_from_file(file_path: str, file_type: str, ocr_lang: str = "eng"
             raise ImportError("python-docx not installed. Run: pip install python-docx")
     
     elif file_type == 'txt':
-        # Plain text files
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read()
     
     elif file_type == 'pptx':
-        # Extract from PowerPoint
         try:
             from pptx import Presentation
             prs = Presentation(file_path)
@@ -174,7 +171,6 @@ def extract_text_from_file(file_path: str, file_type: str, ocr_lang: str = "eng"
             raise ImportError("python-pptx not installed. Run: pip install python-pptx")
     
     else:
-        # Fallback: try to read as text
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
@@ -184,83 +180,88 @@ def extract_text_from_file(file_path: str, file_type: str, ocr_lang: str = "eng"
 
 def translate_if_needed(text: str, ocr_lang: str) -> str:
     """
-    Detect language of text and translate to English if not already English.
-    
-    Args:
-        text (str): Input text
-        ocr_lang (str): Configured language (fallback if detection fails)
-        
-    Returns:
-        str: Translated text (or original if already English)
+    Translation using Facebook NLLB model (from mmt.py integration).
     """
     if not text.strip():
         return text
     
-    # First, try to detect the actual language of the text
-    detected_lang = ocr_lang.lower()  # Default to configured language
-    
-    try:
-        from langdetect import detect
-        if len(text.strip()) >= 20:  # Need minimum text for reliable detection
-            detected_lang = detect(text).lower()
-            print(f"Detected language: {detected_lang}")
-    except Exception as e:
-        print(f"Language detection failed, using configured language {ocr_lang}: {e}")
-    
-    # Skip translation if already English
-    if detected_lang in ['en', 'eng', 'english']:
+    # Skip translation if OCR language is English
+    english_langs = ['eng', 'en', 'english']
+    if ocr_lang.lower() in english_langs:
+        print(f"✅ OCR language is English ({ocr_lang}), skipping translation")
         return text
     
-    # Translate to English for any non-English language
+    print(f"🌐 OCR language is {ocr_lang}, translating to English using NLLB...")
+    
     try:
-        # Import translation models
         from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
         import torch
         
-        # Use NLLB model (same as convert_to_json.py)
-        nllb_model_name = "facebook/nllb-200-distilled-600M"
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        # Load models (cache them to avoid reloading)
-        if not hasattr(translate_if_needed, '_tokenizer'):
-            translate_if_needed._tokenizer = AutoTokenizer.from_pretrained(nllb_model_name)
-            translate_if_needed._model = AutoModelForSeq2SeqLM.from_pretrained(nllb_model_name).to(device)
-        
-        tokenizer = translate_if_needed._tokenizer
-        model = translate_if_needed._model
-        
-        # Language mapping for source languages
+        # Language mapping for NLLB
         lang_map = {
             "hi": "hin_Deva", "ta": "tam_Taml", "te": "tel_Telu", "bn": "ben_Beng",
             "gu": "guj_Gujr", "kn": "kan_Knda", "ml": "mal_Mlym", "mr": "mar_Deva",
             "pa": "pan_Guru", "or": "ory_Orya", "en": "eng_Latn", "eng": "eng_Latn"
         }
         
-        src_lang = lang_map.get(detected_lang, f"{detected_lang}_Latn")  # Fallback for unknown langs
+        src_lang = lang_map.get(ocr_lang.lower(), "eng_Latn")  # Default to English if not found
+        tgt_lang = "eng_Latn"  # Target is always English
         
-        # Split text into chunks if too long
+        print(f"🔧 Loading NLLB model on {device}...")
+        
+        # Cache model to avoid reloading
+        if not hasattr(translate_if_needed, '_model'):
+            model_name = "facebook/nllb-200-distilled-600M"
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name).to(device)
+            translate_if_needed._tokenizer = tokenizer
+            translate_if_needed._model = model
+            print(f"✅ NLLB model loaded")
+        
+        tokenizer = translate_if_needed._tokenizer
+        model = translate_if_needed._model
+        
+        # Split text into smaller chunks to avoid model limits
         max_length = 512
-        chunks = [text[i:i+max_length] for i in range(0, len(text), max_length)]
-        translated_chunks = []
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        translated_sentences = []
         
-        for chunk in chunks:
-            if not chunk.strip():
+        print(f"📝 Translating {len(sentences)} sentences...")
+        
+        for i, sentence in enumerate(sentences):
+            if not sentence.strip():
                 continue
                 
-            inputs = tokenizer(chunk, return_tensors="pt", padding=True, truncation=True, max_length=max_length).to(device)
-            
-            with torch.no_grad():
-                translated_tokens = model.generate(
-                    **inputs,
-                    forced_bos_token_id=tokenizer.lang_code_to_id["eng_Latn"],  # Always translate to English
-                    max_length=max_length * 2
-                )
-            
-            translated_text = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
-            translated_chunks.append(translated_text)
+            try:
+                # Tokenize with language codes
+                inputs = tokenizer(sentence, return_tensors="pt", padding=True, truncation=True, max_length=max_length).to(device)
+                inputs['forced_bos_token_id'] = tokenizer.convert_tokens_to_ids(tgt_lang)
+                
+                with torch.no_grad():
+                    translated_tokens = model.generate(
+                        **inputs,
+                        max_length=max_length,
+                        num_beams=1,  # Greedy decoding for speed
+                        early_stopping=True
+                    )
+                
+                translated_text = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                translated_sentences.append(translated_text.strip())
+                
+                if (i + 1) % 10 == 0:
+                    print(f"  ✅ Translated {i + 1}/{len(sentences)} sentences")
+                
+            except Exception as e:
+                print(f"    ❌ Error translating sentence {i+1}: {e}")
+                translated_sentences.append(sentence)  # Keep original
         
-        return ' '.join(translated_chunks)
+        final_translation = ' '.join(translated_sentences)
+        print(f"✅ NLLB translation completed! {len(final_translation)} characters")
+        return final_translation
         
     except Exception as e:
-        print(f"Translation failed: {e}")
-        return text  # Return original text if translation fails
+        print(f"❌ NLLB translation failed: {e}")
+        print("⚠️ Keeping original text")
+        return text
