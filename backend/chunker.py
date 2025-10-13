@@ -184,17 +184,31 @@ def extract_text_from_file(file_path: str, file_type: str, ocr_lang: str = "eng"
 
 def translate_if_needed(text: str, ocr_lang: str) -> str:
     """
-    Translate text to English if it's not already in English.
+    Detect language of text and translate to English if not already English.
     
     Args:
         text (str): Input text
-        ocr_lang (str): Detected or configured language
+        ocr_lang (str): Configured language (fallback if detection fails)
         
     Returns:
         str: Translated text (or original if already English)
     """
+    if not text.strip():
+        return text
+    
+    # First, try to detect the actual language of the text
+    detected_lang = ocr_lang.lower()  # Default to configured language
+    
+    try:
+        from langdetect import detect
+        if len(text.strip()) >= 20:  # Need minimum text for reliable detection
+            detected_lang = detect(text).lower()
+            print(f"Detected language: {detected_lang}")
+    except Exception as e:
+        print(f"Language detection failed, using configured language {ocr_lang}: {e}")
+    
     # Skip translation if already English
-    if ocr_lang.lower() in ['eng', 'en', 'english']:
+    if detected_lang in ['en', 'eng', 'english']:
         return text
     
     # Translate to English for any non-English language
@@ -222,7 +236,7 @@ def translate_if_needed(text: str, ocr_lang: str) -> str:
             "pa": "pan_Guru", "or": "ory_Orya", "en": "eng_Latn", "eng": "eng_Latn"
         }
         
-        src_lang = lang_map.get(ocr_lang.lower(), f"{ocr_lang}_Latn")  # Fallback for unknown langs
+        src_lang = lang_map.get(detected_lang, f"{detected_lang}_Latn")  # Fallback for unknown langs
         
         # Split text into chunks if too long
         max_length = 512
