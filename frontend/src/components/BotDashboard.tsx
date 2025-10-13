@@ -37,7 +37,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
     console.log("loadBots called");
     try {
       setLoading(true);
-      const testUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
+      const testUrl = `${API_BASE}/bots/`;
       console.log("Sending GET request to", testUrl);
       const response = await apiClient.get(testUrl, {
         headers: {
@@ -57,7 +57,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
         botsData.map(async (bot: Bot) => {
           try {
             console.log("Fetching stats for bot", bot.id);
-            const statsUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${bot.id}/stats`;
+            const statsUrl = `${API_BASE}/bots/${bot.id}/stats`;
             const statsResponse = await apiClient.get(statsUrl, {
               headers: {
                 'ngrok-skip-browser-warning': 'true',
@@ -92,7 +92,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
   const createBot = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const createUrl = 'https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/';
+      const createUrl = `${API_BASE}/bots/`;
       await apiClient.post(createUrl, { ...newBot, uid }, {
         headers: {
           'ngrok-skip-browser-warning': 'true',
@@ -118,7 +118,7 @@ const BotDashboard: React.FC<{ onBotSelect: (bot: Bot) => void }> = ({ onBotSele
       return;
     }
     try {
-      const deleteUrl = `https://photosensitive-ollie-noncalculative.ngrok-free.dev/bots/${botId}`;
+      const deleteUrl = `${API_BASE}/bots/${botId}`;
       await apiClient.delete(deleteUrl, {
         headers: {
           'ngrok-skip-browser-warning': 'true',

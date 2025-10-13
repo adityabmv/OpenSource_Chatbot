@@ -110,7 +110,28 @@
       "is_active": true,
       "uid": "W88QCwG6l4MPToKnMn2w31N9oFu2",
       "uploaded_files": []
+    },
+    {
+      "id": "e785518b-7e88-45b4-a309-074cfdbb19ad",
+      "name": "Aniruddh_CV",
+      "description": "",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-13 19:05:23.614915",
+      "updated_at": "2025-10-13 19:06:09.643701",
+      "vectorstore_path": "vector_db_Aniruddh_CV_20251013",
+      "is_active": true,
+      "uid": "4uKexxEQMGOne20tv8Zx3UU2RVP2",
+      "uploaded_files": [
+        {
+          "name": "CV_22Sep.pdf",
+          "size": 121918,
+          "uploaded_at": "2025-10-13T19:06:09.643701"
+        }
+      ]
     }
   ],
-  "last_updated": "2025-10-13T18:46:09.346266"
+  "last_updated": "2025-10-13T19:06:09.644959"
 }
