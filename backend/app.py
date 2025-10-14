@@ -100,8 +100,7 @@ class QueryRequest(BaseModel):
 class BotCreateRequest(BaseModel):
     name: str
     description: str = ""
-    chunk_size: int = 500
-    chunk_overlap: int = 50
+    # chunk_size and chunk_overlap removed for automatic chunking
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ocr_lang: str = "eng"
     uid: str = ""
@@ -109,8 +108,7 @@ class BotCreateRequest(BaseModel):
 class BotUpdateRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    chunk_size: Optional[int] = None
-    chunk_overlap: Optional[int] = None
+    # chunk_size and chunk_overlap removed for automatic chunking
     embedding_model: Optional[str] = None
     ocr_lang: Optional[str] = None
     is_active: Optional[bool] = None
@@ -126,8 +124,6 @@ async def create_bot(request: BotCreateRequest):
         bot = bot_manager.create_bot(
             name=request.name,
             description=request.description,
-            chunk_size=request.chunk_size,
-            chunk_overlap=request.chunk_overlap,
             embedding_model=request.embedding_model,
             ocr_lang=request.ocr_lang,
             uid=request.uid
@@ -263,20 +259,18 @@ async def build_bot_with_preview(
             try:
                 with os.fdopen(temp_fd, "wb") as temp:
                     temp.write(content)
-                
+
                 # Unified pipeline for all file types
                 file_extension = os.path.splitext(f.filename)[1][1:].lower()  # Get extension without dot
                 raw_text = extract_text_from_file(temp_path, file_extension, bot.ocr_lang)
-                
+
                 if raw_text.strip():
                     # Translate if needed (Indic languages)
                     processed_text = translate_if_needed(raw_text, bot.ocr_lang)
-                    
-                    # Create chunks
+
+                    # Create chunks (automatic chunking)
                     file_chunks = chunk_text(
                         text=processed_text,
-                        chunk_size=300,
-                        chunk_overlap=30,
                         metadata={
                             "file_name": f.filename,
                             "language": bot.ocr_lang or "eng",
@@ -285,7 +279,7 @@ async def build_bot_with_preview(
                         }
                     )
                     all_texts.extend(file_chunks)
-                    
+
                     # Add preview for first chunk
                     if len(preview_lines) < 5:
                         processor_name = "Docling" if file_extension == 'pdf' else "Unified"
@@ -303,6 +297,12 @@ async def build_bot_with_preview(
         chunks = all_texts  # Each chunk already has its text and metadata
         embeddings_model = get_embeddings_model()
 
+        # Calculate chunk_size for logging (average chunk length)
+        if chunks:
+            avg_chunk_size = int(sum(len(chunk["text"]) for chunk in chunks) / len(chunks))
+        else:
+            avg_chunk_size = 0
+
         vectorstore = append_to_vectorstore(
             chunks,
             embeddings_model,
@@ -319,7 +319,7 @@ async def build_bot_with_preview(
                     "size": f.size if hasattr(f, 'size') else 0,
                     "uploaded_at": datetime.now().isoformat()
                 })
-        
+
         # Add files to bot's uploaded files list
         bot_manager.add_uploaded_files(bot_id, files_info)
 
@@ -329,10 +329,9 @@ async def build_bot_with_preview(
             "bot_name": bot.name,
             "num_chunks": len(chunks),
             "settings": {
-                "chunk_size": 300,
-                "chunk_overlap": 30,
                 "embedding_model": "default",
-                "ocr_lang": bot.ocr_lang
+                "ocr_lang": bot.ocr_lang,
+                "chunk_size": avg_chunk_size  # For log/info only
             },
             "preview": preview_lines,
             "total_text_size": sum(len(chunk["text"]) for chunk in chunks),
