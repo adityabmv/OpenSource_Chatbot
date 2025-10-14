@@ -38,6 +38,95 @@ venv\Scripts\activate
 source venv/bin/activate
 
 pip install -r requirements.txt
+#
+# ---
+#
+# OS Chatbot Project Documentation
+#
+# This guide provides concise instructions for setting up, configuring, and using the OS Chatbot project. It covers environment variables, replacing Firebase/Vercel, setting up OCR (tessdata), and language/documentation tools used.
+#
+# ## 1. Project Setup
+#
+# ### Backend
+# - Install Python 3.8+
+# - Navigate to `backend/` and install dependencies:
+#   ```powershell
+#   cd backend
+#   pip install -r requirements.txt
+#   ```
+#
+# ### Frontend
+# - Install Node.js (v16+ recommended)
+# - Navigate to `frontend/` and install dependencies:
+#   ```powershell
+#   cd frontend
+#   npm install
+#   ```
+#
+# ## 2. Environment Variables
+#
+# - All environment variables are set in `.env` files in `backend/` and `frontend/`.
+# - To replace Firebase or Vercel:
+#   - Remove related keys from `.env` and config files.
+#   - Add new service credentials to `.env` (e.g., for AWS, Azure, etc.).
+#   - Update code to use new environment variables (search for `os.environ` or `process.env`).
+#
+# **Example:**
+# ```env
+# API_KEY=your_new_service_key
+# DB_URL=your_new_database_url
+# ```
+#
+# ## 3. Downloading tessdata for OCR
+#
+# - OCR uses Tesseract and language data files (`tessdata`).
+# - Download tessdata from: https://github.com/tesseract-ocr/tessdata
+# - Place downloaded `.traineddata` files in a folder (e.g., `backend/tessdata/`).
+# - Set the path in your environment or code:
+#   ```python
+#   pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+#   # tessdata path: backend/tessdata/
+#   ```
+#
+# ## 4. Language & Documentation Tools Used
+#
+# - **Docling**: Used for document inspection and language processing.
+# - **OCR**: Tesseract via `pytesseract` for extracting text from images.
+# - **Vector DB**: ChromaDB for storing embeddings.
+# - **LLM Client**: Connects to language models (OpenAI, etc.).
+#
+# ## 5. Running the Project
+#
+# ### Backend
+# ```powershell
+# cd backend
+# python main.py
+# ```
+# Or use Uvicorn for ASGI:
+# ```powershell
+# uvicorn app:app --reload
+# ```
+#
+# ### Frontend
+# ```powershell
+# cd frontend
+# npm run dev
+# ```
+#
+# ## 6. Testing
+# - Backend tests: `backend/tests/`
+# - Run with:
+#   ```powershell
+#   pytest
+#   ```
+#
+# ## 7. Additional Notes
+# - Replace any service (Firebase, Vercel) by updating `.env` and config files, then refactor code to use new variables.
+# - For OCR, ensure tessdata is downloaded and path is set correctly.
+# - For language/documentation, see `backend/inspect_docling.py` and related files.
+#
+# ---
+# For further details, see code comments and README files in each folder.
 ```
 
 3. **Frontend Setup**
