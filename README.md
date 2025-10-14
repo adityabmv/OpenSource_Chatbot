@@ -1,26 +1,27 @@
-Multi-Bot AI Chatbot System
+pip install -r requirements.txt
+# OS Chatbot: No-Code RAG Bot
+A simple, no-code Retrieval-Augmented Generation (RAG) chatbot for developers and non-developers.
 
-## Developer Installation Guide
+## Developer Guide
 
 ### Prerequisites
 - Python 3.8+
 - Node.js 16+
 
 ### Backend Setup
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate  # On Windows
-source venv/bin/activate  # On Mac/Linux
-pip install -r requirements.txt
-```
+1. Open a terminal and run:
+  ```bash
+  cd backend
+  pip install -r requirements.txt
+  ```
 
 ### Frontend Setup
-```bash
-cd frontend
-npm install
-npm start
-```
+1. Open a terminal and run:
+  ```bash
+  cd frontend
+  npm install
+  npm start
+  ```
 
 ### Running Backend
 ```bash
@@ -33,11 +34,23 @@ uvicorn app:app --reload
 cd frontend
 npm start
 ```
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
 
-pip install -r requirements.txt
+### Environment Variables
+- Set up `.env` files in `backend/` and `frontend/` for API keys and service credentials.
+
+### OCR Setup (Optional)
+- Download tessdata from https://github.com/tesseract-ocr/tessdata
+- Place `.traineddata` files in `backend/tessdata/`
+
+### Testing
+- Run backend tests:
+  ```bash
+  cd backend
+  pytest
+  ```
+
+---
+For more details, see code comments and folder-level README files.
 #
 # ---
 #
