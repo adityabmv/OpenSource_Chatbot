@@ -1,0 +1,78 @@
+{
+  "conversations": [
+    {
+      "id": "conv_20251014_095840_419afb54",
+      "title": "Hey",
+      "created_at": "2025-10-14T09:58:40.308396",
+      "updated_at": "2025-10-14T10:03:29.260908",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "Hey",
+          "timestamp": "2025-10-14T10:02:49.731009"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "Hello! How can I assist you with your CSR initiative today? If you have specific data or questions about your CSR projects, I'd be happy to help analyze them.",
+          "timestamp": "2025-10-14T10:02:49.790222"
+        },
+        {
+          "id": "msg_3",
+          "role": "user",
+          "content": "My company revenue was 6cr this year. What contributions do I owe in CSR provision?",
+          "timestamp": "2025-10-14T10:03:29.215734"
+        },
+        {
+          "id": "msg_4",
+          "role": "assistant",
+          "content": "Based exclusively on the provided CSR dataset:\n\nCompanies are mandatorily required to undertake CSR activities only if they meet one or more of the following criteria during their immediately preceding financial year:\n*   Net worth of \u20b9500 crore or more\n*   Turnover of \u20b91,000 crore or more\n*   Net profit of \u20b95 crore or more\n\nSince your company's revenue (turnover) this year is only \u20b96 crore, which is below the \u20b91,000 crore threshold, the mandatory CSR provisions do not currently apply to your company.\n\nTherefore, based on the information available in this dataset, there are no legally required CSR contributions to be made at this time.",
+          "timestamp": "2025-10-14T10:03:29.260908"
+        }
+      ],
+      "uid": ""
+    },
+    {
+      "id": "conv_20251014_100821_20e7f3f9",
+      "title": "New Conversation",
+      "created_at": "2025-10-14T10:08:21.896391",
+      "updated_at": "2025-10-14T10:08:21.896391",
+      "messages": [],
+      "uid": ""
+    },
+    {
+      "id": "conv_20251014_100821_341fa14e",
+      "title": "What does Aniruddh's gym schedule llok like",
+      "created_at": "2025-10-14T10:08:21.900933",
+      "updated_at": "2025-10-14T10:10:59.067826",
+      "messages": [
+        {
+          "id": "msg_1",
+          "role": "user",
+          "content": "What does Aniruddh's gym schedule llok like",
+          "timestamp": "2025-10-14T10:10:03.613690"
+        },
+        {
+          "id": "msg_2",
+          "role": "assistant",
+          "content": "### Aniruddh's Gym Schedule\n\n- **Monday (Chest + Back - Heavy Strength)**:\n  - Bench Press: 4x5 at 80-85% 1RM, RPE 8\n  - Weighted Pull-Ups: 4x5 with added weight\n  - Incline Dumbbell Bench Press: 3x6\n  - Barbell Row: 3x6\n  - Dumbbell Chest Fly: 2x10 (slow, controlled)\n  - Lat Pulldown: 2x10\n\n- **Tuesday (Shoulders + Arms - Hypertrophy)**:\n  - Overhead Press: 3x8 at 65-70% 1RM, RPE 7\n  - Lateral Raises: 3x12\n  - Arnold Press: 3x10\n  - Barbell Curl: 3x10\n  - Skull Crushers: 3x10\n  - Rope Face Pull: 2x15\n  - Hammer Curl: 2x12 (slow, eccentric)\n\n- **Thursday (Legs - Hypertrophy + Explosive)**:\n  - Front Squats: 3x8 at 65-70% 1RM\n  - Romanian Deadlift: 3x8\n  - Walking Lunges: 3x10 each leg\n  - Leg Press: 2x12\n  - Jump Squats: 3x5 (bodyweight or light barbell)\n  - Box Jumps: 3x8\n  - Calf Raises: 3x15\n\n- **Friday (Chest + Back - Hypertrophy Volume)**:\n  - Bench Press: 3x8 at 70% 1RM, RPE 7\n  - Pull-Ups: 3-Round AMRAP, leave 1 rep in reserve\n  - Incline Dumbbell Bench Press: 3x10\n  - Cable Rows: 3x10\n  - Dumbbell Pullovers: 2x12\n  - Pec Deck Fly: 2x15\n\n- **Saturday (Legs - Heavy Strength)**:\n  - Back Squats: 4x5 at 80-85% 1RM, RPE 8\n  - Deadlift / Trap Bar Deadlift: 3x5\n  - Bulgarian Split Squats: 3x6 each leg\n  - Hip Thrusts: 3x8\n  - Leg Press (optional): 2x10\n  - Standing Calf Raises: 3x12 (controlled tempo)\n\n- **Sunday**:\n  - Basketball or Cardio session\n  - Mobility and stretching post-activity\n\n**Notes**: Training focuses on progression via RPE, with deloads and adjustments based on fatigue or performance.",
+          "timestamp": "2025-10-14T10:10:03.665890"
+        },
+        {
+          "id": "msg_3",
+          "role": "user",
+          "content": "Critique ANiruddh's workout schedule from an olympic lifter and a powerlifter's perpsective",
+          "timestamp": "2025-10-14T10:10:59.007632"
+        },
+        {
+          "id": "msg_4",
+          "role": "assistant",
+          "content": "```markdown\n**Olympic Lifter Perspective:**\n\n*   **Heavy Strength Focus:** The program emphasizes high %/RPE on Monday and Saturday, which is generally appropriate for strength. However, Olympic lifts are **missing entirely**. All exercises performed (bench press, squats, pull-ups, rows, lunges) are either power sports lifts or accessories; none develop the technical skill crucial for Olympic lifting.\n*   **Accessory Exercises:** Exercises like incline dumbbell bench press and pec deck fly are primarily hypertrophy tools that don't enhance the core Olympic lifts (Snatch, Clean & Jerk) or assistive movements.\n*   **Main Lift Consistency:** Regular day-to-day vs lift specificity. While the bench press appears frequently, it's not the best lift for an Olympic perspective, though the percentages seem manageable if strong base exists.\n*   **High Volume:** Daily undulating programs can be demanding. The combination with basketball could lead to excessive fatigue or one-sided development.\n\n**Powerlifter Perspective:**\n\n*   **Main Lift Integration:** While incorporating back squats, bench presses, and deadlifts, the program lacks a dedicated Anterior Core exercise like Pallof Press or Cable Twists. The emphasis on lateral raises and skull crushers could potentially lead to shoulder fatigue, indirectly affecting bench press strength.\n*   **Percentage & RPE:** Heavy days (Mon, Sat) are pushing strength days at 80-85%, RPE 8, which is appropriate for a high-intensity program. However, the volume is quite high (e.g., 4x5, 3x5, 3x6 for squats, deadlift variations). The competitive lifts (front squat, trap bar deadlift) may be over-leveled compared to foundational lifts if the primary goal is maximal strength.\n*   **Accessory Selection:** Romanian Deadlift, Walking Lunges, and incline DB press may not be the most effective or prioritized accessories for pure powerlifting. Focus should arguably be more visceral (stability) and posterior chain.\n*   **Main Lift Focus:** The frequency (1x Bench Main (RP7), 1x Squat Main (RP7), 1x Deadlift Main (RP7)) is adequate but perhaps slightly high for beginners, especially alongside basketball strength demands. Dup structure shown integrates main lifts Mon, Fri, Sat (x2 reps lower) and Sat.\n*   **Integration:** The regular integration of basketball. If an athlete plays games mid-week (Tuesday), potential conflict with leg recovery/development due to high workload on Thursday legs.\n```",
+          "timestamp": "2025-10-14T10:10:59.067826"
+        }
+      ],
+      "uid": ""
+    }
+  ]
+}

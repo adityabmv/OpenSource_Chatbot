@@ -46,21 +46,6 @@
       "uploaded_files": []
     },
     {
-      "id": "956c3649-0bd3-4ad3-afdc-021ab15940bd",
-      "name": "Graph",
-      "description": "",
-      "chunk_size": 500,
-      "chunk_overlap": 50,
-      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
-      "ocr_lang": "eng",
-      "created_at": "2025-10-12 14:59:15.293503",
-      "updated_at": "2025-10-12 14:59:15.293503",
-      "vectorstore_path": "vector_db_Graph_20251012",
-      "is_active": true,
-      "uid": "Gvcl0pqUMRYNucCwOvWKHzzBKIE3",
-      "uploaded_files": []
-    },
-    {
       "id": "9bf2ce39-90ab-4af1-a79e-3577bcf0af24",
       "name": "kSHITIH",
       "description": "AAA",
@@ -131,7 +116,33 @@
           "uploaded_at": "2025-10-13T19:06:09.643701"
         }
       ]
+    },
+    {
+      "id": "f70f8a20-0328-4893-8c4c-f6bde89a4015",
+      "name": "a",
+      "description": "a",
+      "chunk_size": 500,
+      "chunk_overlap": 50,
+      "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "ocr_lang": "eng",
+      "created_at": "2025-10-14 09:58:39.080346",
+      "updated_at": "2025-10-14 10:08:47.480982",
+      "vectorstore_path": "vector_db_a_20251014",
+      "is_active": true,
+      "uid": "Gvcl0pqUMRYNucCwOvWKHzzBKIE3",
+      "uploaded_files": [
+        {
+          "name": "CSR.pdf",
+          "size": 2785014,
+          "uploaded_at": "2025-10-14T10:01:22.070909"
+        },
+        {
+          "name": "DUP_Program_Aniruddh_3MonthGuide.pdf",
+          "size": 7717,
+          "uploaded_at": "2025-10-14T10:08:47.480982"
+        }
+      ]
     }
   ],
-  "last_updated": "2025-10-13T19:06:09.644959"
+  "last_updated": "2025-10-14T10:08:47.481993"
 }
