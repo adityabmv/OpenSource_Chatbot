@@ -62,7 +62,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   const [loadingFiles, setLoadingFiles] = useState(false);
 
   // Preprocessing settings (can be different from bot defaults)
-  const [tempChunkSize, setTempChunkSize] = useState("default");
+  // chunk_size removed; chunking is now automatic
   const [tempOcrLang, setTempOcrLang] = useState(bot.ocr_lang);
 
   // Chat history state
@@ -71,8 +71,39 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
   useEffect(() => {
     loadBotStats();
     loadUploadedFiles();
-    handleNewConversation();
+    loadAndSetLatestConversation();
   }, [bot.id]);
+  // Load conversations and set latest as active tab
+  const loadAndSetLatestConversation = async () => {
+    try {
+      const response = await apiClient.get(`${API_BASE}/bots/${bot.id}/chat/conversations`);
+      const conversations = response.data.conversations || [];
+      if (conversations.length > 0) {
+        // Load latest conversation (by updated_at or last in list)
+        const latest = conversations.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+        // Prevent duplicate tab: only create if not already present
+        const existingTab = tabs.find(tab => tab.id === latest.id);
+        if (existingTab) {
+          setActiveTabId(latest.id);
+        } else {
+          // Only fetch messages and add tab if not present
+          const convoRes = await apiClient.get(`${API_BASE}/bots/${bot.id}/chat/conversations/${latest.id}`);
+          const loadedMessages = (convoRes.data.conversation.messages || []).map((msg: any) => ({
+            user: msg.role === 'user' ? msg.content : '',
+            bot: msg.role === 'assistant' ? msg.content : '',
+            timestamp: new Date(msg.timestamp)
+          }));
+          handleLoadConversation(latest.id, loadedMessages);
+        }
+      } else if (tabs.length === 0) {
+        // No conversations and no tabs, create new
+        handleNewConversation();
+      }
+    } catch (error) {
+      console.error('Failed to load/set latest conversation:', error);
+      handleNewConversation();
+    }
+  };
 
   const loadBotStats = async () => {
     try {
@@ -264,7 +295,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
     try {
       setBuildStatus('building');
       const res = await apiClient.post(
-        `${API_BASE}/bots/${bot.id}/build_and_preview/?chunk_size=${tempChunkSize}&chunk_overlap=50&embedding_model=sentence-transformers/all-MiniLM-L6-v2`,
+        `${API_BASE}/bots/${bot.id}/build_and_preview/?embedding_model=sentence-transformers/all-MiniLM-L6-v2`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -445,16 +476,7 @@ const BotChat: React.FC<BotChatProps> = ({ bot, onBack }) => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1">Chunk Size</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 bg-zinc-800 text-white border border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={tempChunkSize}
-                onChange={(e) => setTempChunkSize(e.target.value)}
-                placeholder="500"
-              />
-            </div>
+            
           </div>
 
           <div className="mt-4 flex gap-2">
